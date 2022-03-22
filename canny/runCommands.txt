@@ -1,0 +1,2 @@
+g++ -I/usr/include/libpng15 -L/usr/lib64 -lpng15 -o cannyTest cannyEdgeDetector.cpp ^C
+./cannyTest /home/u9/catmcqueen/ece569_hpc/proj/CannyEdgeDetector/BSDS300/images/train/png/15004_resized.png
