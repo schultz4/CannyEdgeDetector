@@ -15,6 +15,10 @@ png_byte color_type;
 png_byte bit_depth;
 png_bytep *row_pointers = NULL;
 
+typedef struct {
+   float* pixel;
+} greyImage;
+
 void read_png_file(char *filename) {
   FILE *fp = fopen(filename, "rb");
 
@@ -79,16 +83,21 @@ void read_png_file(char *filename) {
 
 
 void process_png_file() {
-  //for(int y = 0; y < height; y++) {
-    //png_bytep row = row_pointers[y];
-    //for(int x = 0; x < width; x++) {
-      //png_bytep px = &(row[x * 4]);
+  printf("Height %4d Width %4d \n", height, width);
+  greyImage greyImg;
+
+  for(int y = 0; y < height; y++) {
+    png_bytep row = row_pointers[y];
+    for(int x = 0; x < width; x++) {
+      png_bytep px = &(row[x * 4]);
       // Do something awesome for each pixel here...
       //printf("%4d, %4d = RGBA(%3d, %3d, %3d, %3d)\n", x, y, px[0], px[1], px[2], px[3]);
-	printf("Height %4d Width %4d \n", height, width);	
-
-   // }
-  //}
+      int idx     = row*width + col;
+      int greyVal = .2989f*px[0] + .587f*px[1] + .114f*px[2];
+      greyImg[idx] = grayVal;
+       
+      }
+   }
 }
 
 int main(int argc, char *argv[]) {
