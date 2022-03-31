@@ -76,28 +76,96 @@ __global__ void Make1DGaussFilter(float *inFilter, int filterSize) {
 
 __global__ void GaussianFilter(float *inImg, float *outImg, float *filter, int width, int height, int filterSize) {
 	int x = blockDim.x * blockIdx.x + threadIdx.x;
-	int y = blockDim.y * blockIdx.y + threadIdx.y;
+	//int y = blockDim.y * blockIdx.y + threadIdx.y;
 
-	int filterHalf = filterSize / 2;	
-	// check boundaries, do I need to do width - filterSize?
-	if (x > width - filterHalf || y > height - filterHalf) {
-		return;
-	}
-	
-	double sumval = 0;
-	//multiply every value of the filter with the corresponding image pixel
-	for (int fy = 0; fy < filterSize; fy++) {
-		for (fx = 0; fx < filterSize; fx++) {
-			//first center the filter on the image
-			int xval = x - filterSize / 2.0 + fx;
-			int yval = y - filterSize / 2.0 + fy;
-			sumval   = inImg[yval*width + xval] * filter[fy][fx]
+	// read in kernel image into shared memory?
+	__shared__ double inFilter[filterSize][filterSize];
+	for (int fx = 0; fx < filterSize; ++fx) {
+		for (int fy = 0; fy < filterSize; ++fy) {
+			inFilter[fx][fy] = filter[fx * filterSize + fy];
 		}
 	}
 	
+	__syncthreads();
+
+	int filterHalf = (filterSize - 1) / 2;	
+	// check boundaries, do I need to do width - filterSize?
+	if (x > 0 && x < width*height ) {
+		double kernelval = 0;
+		double sumval	 = 0;
+		//multiply every value of the filter with the corresponding image pixel
+		for (int fy = 0; fy < filterSize; ++fy) {
+			for (fx = 0; fx < filterSize; ++fx) {
+				// check edge cases, if it's within the boundary then apply filter
+				if ((x + ((fy -filterHalf)*width)+fx - filterHalf >= 0) &&
+				   (x + ((fy -filterHalf)*width)+fx - filterHalf <= width*height-1) &&
+				   (((x % width) + fx - filterHalf) >= 0) &&
+			           (((x % width) + fx - filterHalf) <= width-1)) {
+					int xval = x + filterHalf*width + fx - filterHalf;
+					sumval   += inImg[xval] * inFilter[fy][fx];
+					kernelval++;
+				}
+			}
+		}
+		
+
+		outImg[x] = sumval/ kernelval;
+	}
+	__syncthreads();
 }
 
-__global__ void 
+__global__ void SobelFilterGradient(float *inImg, float *outImg, int width, int height) {
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	// these are just const values? idk where they come from
+	/* To detect horizontal lines, G_x. */
+    	const int fmat_x[3][3] = {
+        	{-1, 0, 1},
+        	{-2, 0, 2},
+        	{-1, 0, 1}
+    	};
+    	/* To detect vertical lines, G_y */
+    	const int fmat_y[3][3]  = {
+        	{-1, -2, -1},
+        	{0,   0,  0},
+        	{1,   2,  1}
+    	};
+
+
+	double filterSize = 3;
+	double halfFilter = filterSize/2;
+
+	sumx = 0;
+	sumy = 0;
+	// make sure to skip the ones that are on the edges.
+	// since the filter is 3 wide, just skip the 1 edges and you'll miss the others
+	if (x < 1 || x > width - 1 || y < 1 || y > height - 1) {
+		return;
+	}
+
+	for (fy = y - halfFilter; fy < (y + filterSize - filterHalf); fy++) {
+		for (fx = x - halfFilter; fx < (x + filterSize - filterHalf); fx++) {
+			sumx += (double) fmat_x[fy - y + halfFilter][x - fx + halfFilter] * inImg[fy * width + fx];
+			sumy += (double) fmat_y[fy - y + halfFilter][x - fx + halfFilter] * inImg[fy * width + fx];
+		}
+	}
+
+	// get magnitude then clip it to 0-255
+	// sqrt (x^2 + y^2) 
+	int value = sqrt(sumx * sumx + sumy * sumy);
+	if (value > 255) 
+		value = 255
+	if (value < 0)
+		value = 0
+
+	outImg[y * width + x] = value;
+
+	__syncthreads();
+
+	// now compute the gradients 
+	
+} 
 
 
 // Also modify the main function to launch thekernel.
