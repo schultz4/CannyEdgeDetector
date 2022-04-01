@@ -240,7 +240,11 @@ int main(int argc, char *argv[]) {
 
   wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
 
-  wbSolution(args, outputImage);
+  //wbSolution(args, outputImage);
+
+  char *oFile = wbArg_getOutputFile(args);
+  //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
+  wbExport(oFile, outputImage);
 
   cudaFree(deviceInputImageData);
   cudaFree(deviceOutputImageData);
