@@ -114,7 +114,7 @@ __global__ void GaussianFilter(float *inImg, float *outImg, float *filter, int w
 	__syncthreads();
 }
 
-__global__ void SobelFilterGradient(float *inImg, float *outImg, int width, int height) {
+__global__ void SobelFilterGradient(float *inImg, float *outImg, float *gradientDir, int width, int height) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -136,11 +136,11 @@ __global__ void SobelFilterGradient(float *inImg, float *outImg, int width, int 
 	double filterSize = 3;
 	double halfFilter = filterSize/2;
 
-	sumx = 0;
-	sumy = 0;
+	double sumx = 0;
+	double sumy = 0;
 	// make sure to skip the ones that are on the edges.
 	// since the filter is 3 wide, just skip the 1 edges and you'll miss the others
-	if (x < 1 || x > width - 1 || y < 1 || y > height - 1) {
+	if (x < 0 || x > width - 1 || y < 0 || y > height - 1) {
 		return;
 	}
 
@@ -151,6 +151,8 @@ __global__ void SobelFilterGradient(float *inImg, float *outImg, int width, int 
 		}
 	}
 
+	__syncthreads();
+
 	// get magnitude then clip it to 0-255
 	// sqrt (x^2 + y^2) 
 	int value = sqrt(sumx * sumx + sumy * sumy);
@@ -159,12 +161,11 @@ __global__ void SobelFilterGradient(float *inImg, float *outImg, int width, int 
 	if (value < 0)
 		value = 0
 
-	outImg[y * width + x] = value;
+	outImg[y * width + x]      = value; // output of the sobel filter
+	gradientDir[y * width + x] = atan(sumx/sumy) * 180/M_PI); // the gradient calculation
 
+	}	
 	__syncthreads();
-
-	// now compute the gradients 
-	
 } 
 
 
@@ -177,9 +178,19 @@ int main(int argc, char *argv[]) {
   char *inputImageFile;
   wbImage_t inputImage;
   wbImage_t outputImage;
+
   float *hostInputImageData;
+  float *hostGrayImageData;
+  float *hostBlurImageData;
+  float *hostGradientImageData;
+  float *hostSobelImageData;
   float *hostOutputImageData;
+
   float *deviceInputImageData;
+  float *deviceGrayImageData;
+  float *deviceBlurImageData;
+  float *deviceGradientImageData;
+  float *deviceSobelImageData;
   float *deviceOutputImageData;
 
   args = wbArg_read(argc, argv); /* parse the input arguments */
@@ -197,14 +208,17 @@ int main(int argc, char *argv[]) {
   outputImage = wbImage_new(imageWidth, imageHeight, 1);
 
   hostInputImageData  = wbImage_getData(inputImage);
-  hostOutputImageData = wbImage_getData(outputImage);
+//  hostOutputImageData = wbImage_getData(outputImage);
 
   wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
 
+  ////////////////////////////////////////////////
+// GRAYSCALE MEMORY SETUP
+  ///////////////////////////////////////////////
   wbTime_start(GPU, "Doing GPU memory allocation");
   cudaMalloc((void **)&deviceInputImageData,
              imageWidth * imageHeight * imageChannels * sizeof(float));
-  cudaMalloc((void **)&deviceOutputImageData,
+  cudaMalloc((void **)&deviceGrayImageData,
              imageWidth * imageHeight * sizeof(float));
   wbTime_stop(GPU, "Doing GPU memory allocation");
 
@@ -216,7 +230,7 @@ int main(int argc, char *argv[]) {
 
   ///////////////////////////////////////////////////////
   wbTime_start(Compute, "Doing the computation on the GPU");
-  //@@ INSERT CODE HERE
+  // GRAYSCALE
 
   // 256 = 16 * 16
   dim3 BlockDim(16,16);
@@ -226,27 +240,73 @@ int main(int argc, char *argv[]) {
   GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
 
   // call the greyscale function
-  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceOutputImageData, imageWidth, imageHeight);
+  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
 
 
   wbTime_stop(Compute, "Doing the computation on the GPU");
 
   ///////////////////////////////////////////////////////
   wbTime_start(Copy, "Copying data from the GPU");
-  cudaMemcpy(hostOutputImageData, deviceOutputImageData,
+  cudaMemcpy(hostGrayImageData, deviceGrayImageData,
              imageWidth * imageHeight * sizeof(float),
              cudaMemcpyDeviceToHost);
   wbTime_stop(Copy, "Copying data from the GPU");
-
+ 
   wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
 
   //wbSolution(args, outputImage);
+  cudaFree(deviceInputImageData);
+  //////////////////////////////////////////////////////////////
+  // END GRAYSCALE
+  ///////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+  // START GAUSSIAN BLUR 
+  ///////////////////////////////////////////////////////
+  cudaMalloc((void**)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float));
+  cudaMemcpy(deviceGrayImageData, hostGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+  int block_dim  = 1024;
+  int num_blocks = (int)ceil((imageWidth*imageHeight) / block_dim);
+  dim3 gridDim(gridsize);
+  dim3 blockDim(blocksize);
+  // todo get the acutal filter here
+  float *hostFilter = gaussianFilter();
+  float *deviceFilter;
+  cudaMemcpy(deviceFilter, hostFilter, filtersize*filterSize*sizeof(float), cudaMemcpyHostToDevice);
+  GaussianFilter<<<gridDim, blockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
 
+  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+
+  cudaFree(deviceGrayImageData);
+
+  /////////// ///////////////////////////////////////
+  // END GAUSS BLUR
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  // START SOBEL
+  /////////////////////////////////////////////////
+
+  cudaMalloc((void**)&deviceSobelImageData, imageWidth*imageHeight*sizeof(float));
+  cudaMalloc((void**)&deviceGradientImageData, imageWidth*imageHeight*sizeof(float));
+  cudaMemcpy(deviceBlurImageData, hostBlurImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+  
+  dim3 BlockDim(16,16);
+  dim3 GridDim;
+
+  GridDim.x = (imageWidth + BlockDim.x - 1) / BlockDim.x;
+  GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
+
+  SobelFilterGradient(deviceBlurImageData, deviceSobelImageData, deviceGradientImageData, imageWidth, imageHeight);
+
+  cudaMemcpy(hostSobelImageData, devideSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cuaMemcpyDeviceToHost);
+
+  ///////////////////////////////////////////////
+  // END SOBEL AND GRADIENT CALC
+  //////////////////////////////////////////////
   char *oFile = wbArg_getOutputFile(args);
   //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
   wbExport(oFile, outputImage);
 
-  cudaFree(deviceInputImageData);
   cudaFree(deviceOutputImageData);
 
   wbImage_delete(outputImage);
