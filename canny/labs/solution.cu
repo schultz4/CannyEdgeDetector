@@ -1,4 +1,5 @@
 #include <wb.h>
+#include "Otsus_Method.h"
 
 #define wbCheck(stmt)                                                     \
   do {                                                                    \
