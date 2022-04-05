@@ -1,5 +1,5 @@
 add_lab("CannyImage")
 #add_lab_solution("CannyImage" ${PROJECT_SOURCE_DIR}/solution.cu)
 set(sources ${PROJECT_SOURCE_DIR}/Otsus_Method_Sequential.cu ${PROJECT_SOURCE_DIR}/solution.cu)
-cuda_add_executable(CannyImage ${sources})
-target_link_libraries(CannyImage ${WBLIB} )
+cuda_add_executable(CannyImage_Solution ${sources})
+target_link_libraries(CannyImage_Solution ${WBLIB} )

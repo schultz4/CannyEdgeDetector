@@ -30,9 +30,8 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
                 float g = inImg[idx + 1];       //green
                 float b = inImg[idx + 2];       //blue
                 outImg[grayidx]  = (0.21*r + 0.71*g + 0.07*b);
-        }
+	}
 }
-
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
