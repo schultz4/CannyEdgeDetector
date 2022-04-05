@@ -44,6 +44,9 @@ int main(int argc, char *argv[]) {
   float *deviceSobelImageData;
   //int *deviceOutputImageData;
 
+  unsigned int *histogram;
+  histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
+
   args = wbArg_read(argc, argv); /* parse the input arguments */
 
   inputImageFile = wbArg_getInputFile(args, 0);
@@ -141,7 +144,24 @@ int main(int argc, char *argv[]) {
   //////////////////////////////////////////////////////////
   // end serial implementation
   //////////////////////////////////////////////////////////
+  
+  Histogram_Sequential(deviceGrayImageData, histogram, imageWidth, imageHeight);
 
+  double thresh = Otsu_Sequential(histogram);
+
+  printf("\n");
+  printf("Width = %u\n",imageWidth);
+  printf("Height = %u\n",imageHeight);
+  printf("Histogram[0] = %u\n",histogram[0]);
+  printf("Histogram[1] = %u\n",histogram[1]);
+  printf("Histogram[20] = %u\n",histogram[20]);
+  printf("Histogram[45] = %u\n",histogram[45]);
+  printf("Histogram[56] = %u\n",histogram[56]);
+  printf("Image[0] = %f\n",hostGrayImageData[0]);
+  printf("Image[1] = %f\n",hostGrayImageData[1]);
+  printf("Image[20] = %f\n",hostGrayImageData[20]);
+  printf("Otsu's Threshold = %f\n", thresh);
+  printf("\n");
   
   //wbSolution(args, outputImage);
   cudaFree(deviceInputImageData);
