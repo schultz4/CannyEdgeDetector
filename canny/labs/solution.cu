@@ -75,99 +75,6 @@ __global__ void Make1DGaussFilter(float *inFilter, int filterSize) {
 
 }
 
-__global__ void GaussianFilter(float *inImg, float *outImg, float *filter, int width, int height, int filterSize) {
-	int x = blockDim.x * blockIdx.x + threadIdx.x;
-	//int y = blockDim.y * blockIdx.y + threadIdx.y;
-
-	// read in kernel image into shared memory?
-	__shared__ double inFilter[filterSize][filterSize];
-	for (int fx = 0; fx < filterSize; ++fx) {
-		for (int fy = 0; fy < filterSize; ++fy) {
-			inFilter[fx][fy] = filter[fx * filterSize + fy];
-		}
-	}
-	
-	__syncthreads();
-
-	int filterHalf = (filterSize - 1) / 2;	
-	// check boundaries, do I need to do width - filterSize?
-	if (x > 0 && x < width*height ) {
-		double kernelval = 0;
-		double sumval	 = 0;
-		//multiply every value of the filter with the corresponding image pixel
-		for (int fy = 0; fy < filterSize; ++fy) {
-			for (fx = 0; fx < filterSize; ++fx) {
-				// check edge cases, if it's within the boundary then apply filter
-				if ((x + ((fy -filterHalf)*width)+fx - filterHalf >= 0) &&
-				   (x + ((fy -filterHalf)*width)+fx - filterHalf <= width*height-1) &&
-				   (((x % width) + fx - filterHalf) >= 0) &&
-			           (((x % width) + fx - filterHalf) <= width-1)) {
-					int xval = x + filterHalf*width + fx - filterHalf;
-					sumval   += inImg[xval] * inFilter[fy][fx];
-					kernelval++;
-				}
-			}
-		}
-		
-
-		outImg[x] = sumval/ kernelval;
-	}
-	__syncthreads();
-}
-
-__global__ void SobelFilterGradient(float *inImg, float *outImg, float *gradientDir, int width, int height) {
-	int x = blockIdx.x * blockDim.x + threadIdx.x;
-	int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-	// these are just const values? idk where they come from
-	/* To detect horizontal lines, G_x. */
-    	const int fmat_x[3][3] = {
-        	{-1, 0, 1},
-        	{-2, 0, 2},
-        	{-1, 0, 1}
-    	};
-    	/* To detect vertical lines, G_y */
-    	const int fmat_y[3][3]  = {
-        	{-1, -2, -1},
-        	{0,   0,  0},
-        	{1,   2,  1}
-    	};
-
-
-	double filterSize = 3;
-	double halfFilter = filterSize/2;
-
-	double sumx = 0;
-	double sumy = 0;
-	// make sure to skip the ones that are on the edges.
-	// since the filter is 3 wide, just skip the 1 edges and you'll miss the others
-	if (x < 0 || x > width - 1 || y < 0 || y > height - 1) {
-		return;
-	}
-
-	for (fy = y - halfFilter; fy < (y + filterSize - filterHalf); fy++) {
-		for (fx = x - halfFilter; fx < (x + filterSize - filterHalf); fx++) {
-			sumx += (double) fmat_x[fy - y + halfFilter][x - fx + halfFilter] * inImg[fy * width + fx];
-			sumy += (double) fmat_y[fy - y + halfFilter][x - fx + halfFilter] * inImg[fy * width + fx];
-		}
-	}
-
-	__syncthreads();
-
-	// get magnitude then clip it to 0-255
-	// sqrt (x^2 + y^2) 
-	int value = sqrt(sumx * sumx + sumy * sumy);
-	if (value > 255) 
-		value = 255
-	if (value < 0)
-		value = 0
-
-	outImg[y * width + x]      = value; // output of the sobel filter
-	gradientDir[y * width + x] = atan(sumx/sumy) * 180/M_PI); // the gradient calculation
-
-	}	
-	__syncthreads();
-} 
 
 
 // Also modify the main function to launch thekernel.
@@ -181,17 +88,17 @@ int main(int argc, char *argv[]) {
   wbImage_t outputImage;
 
   float *hostInputImageData;
-  float *hostGrayImageData;
-  float *hostBlurImageData;
-  float *hostGradientImageData;
-  float *hostSobelImageData;
+  //float *hostGrayImageData;
+  //float *hostBlurImageData;
+  //float *hostGradientImageData;
+  //float *hostSobelImageData;
   float *hostOutputImageData;
 
   float *deviceInputImageData;
-  float *deviceGrayImageData;
-  float *deviceBlurImageData;
-  float *deviceGradientImageData;
-  float *deviceSobelImageData;
+  //float *deviceGrayImageData;
+  //float *deviceBlurImageData;
+  //float *deviceGradientImageData;
+  //float *deviceSobelImageData;
   float *deviceOutputImageData;
 
   args = wbArg_read(argc, argv); /* parse the input arguments */
@@ -219,7 +126,7 @@ int main(int argc, char *argv[]) {
   wbTime_start(GPU, "Doing GPU memory allocation");
   cudaMalloc((void **)&deviceInputImageData,
              imageWidth * imageHeight * imageChannels * sizeof(float));
-  cudaMalloc((void **)&deviceGrayImageData,
+  cudaMalloc((void **)&deviceOutputImageData,
              imageWidth * imageHeight * sizeof(float));
   wbTime_stop(GPU, "Doing GPU memory allocation");
 
@@ -241,14 +148,14 @@ int main(int argc, char *argv[]) {
   GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
 
   // call the greyscale function
-  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
+  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceOutputImageData, imageWidth, imageHeight);
 
 
   wbTime_stop(Compute, "Doing the computation on the GPU");
 
   ///////////////////////////////////////////////////////
   wbTime_start(Copy, "Copying data from the GPU");
-  cudaMemcpy(hostGrayImageData, deviceGrayImageData,
+  cudaMemcpy(hostOutputImageData, deviceOutputImageData,
              imageWidth * imageHeight * sizeof(float),
              cudaMemcpyDeviceToHost);
   wbTime_stop(Copy, "Copying data from the GPU");
@@ -260,6 +167,7 @@ int main(int argc, char *argv[]) {
   //////////////////////////////////////////////////////////////
   // END GRAYSCALE
   ///////////////////////////////////////////////////////////
+/*
   //////////////////////////////////////////////////////////
   // START GAUSSIAN BLUR 
   ///////////////////////////////////////////////////////
@@ -304,6 +212,7 @@ int main(int argc, char *argv[]) {
   ///////////////////////////////////////////////
   // END SOBEL AND GRADIENT CALC
   //////////////////////////////////////////////
+*/
   char *oFile = wbArg_getOutputFile(args);
   //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
   wbExport(oFile, outputImage);
