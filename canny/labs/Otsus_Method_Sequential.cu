@@ -1,9 +1,9 @@
 #include "Otsus_Method.h"
 
-void Histogram_Sequential(unsigned char *image, int width, int height, int *hist)
+void Histogram_Sequential(int *image, unsigned int *hist, int width, int height)
 {
 	// Row pointer
-	unsigned char* matrix = image;
+	int* matrix = image;
 
 	// Loop through every pixel
 	for (int i = 0; i < width; i++)
@@ -21,7 +21,7 @@ void Histogram_Sequential(unsigned char *image, int width, int height, int *hist
 
 }
 
-double Otsu_Sequential(int* histogram)
+double Otsu_Sequential(unsigned int* histogram)
 {
 
 	// Calculate the bin_edges

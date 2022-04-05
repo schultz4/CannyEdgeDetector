@@ -11,9 +11,6 @@ __global__ void NaiveHistogram(unsigned char *image, int width, int height, int 
     int num_threads_x = blockDim.x * gridDim.x;
     int num_threads_y = blockDim.y * gridDim.y;
 
-    // Calculate number of threads per block
-    int threads_per_block = blockDim.x * blockDim.y;
-
     // Calculate linear blockID
     int bid = blockIdx.x + blockIdx.y * gridDim.x;
 
