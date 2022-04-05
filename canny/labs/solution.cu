@@ -20,8 +20,9 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
         int row  = blockDim.y * blockIdx.y + threadIdx.y;
         int numchannel = 3;
 
+
         // x = col and y = row
-        if (col < width && row < height) {
+        if (col >= 0 && col < width && row >=0 && row < height) {
                 // each spot is 3 big (rgb) so get the number of spots
                 grayidx = row * width + col;
                 idx     = grayidx * numchannel; // and multiply by three
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
   outputImage = wbImage_new(imageWidth, imageHeight, 1);
 
   hostInputImageData  = wbImage_getData(inputImage);
-//  hostOutputImageData = wbImage_getData(outputImage);
+  hostOutputImageData = wbImage_getData(outputImage);
 
   wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
 
@@ -97,11 +98,12 @@ int main(int argc, char *argv[]) {
   // GRAYSCALE
 
   // 256 = 16 * 16
-  dim3 BlockDim(16,16);
-  dim3 GridDim;
-
-  GridDim.x = (imageWidth + BlockDim.x - 1) / BlockDim.x;
-  GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
+  int blocksize = 16;
+  dim3 BlockDim(blocksize,blocksize);
+  dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
+  
+ // GridDim.x = (imageWidth + BlockDim.x - 1) / BlockDim.x;
+ // GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
 
   // call the greyscale function
   ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceOutputImageData, imageWidth, imageHeight);
@@ -170,7 +172,7 @@ int main(int argc, char *argv[]) {
   //////////////////////////////////////////////
 */
   char *oFile = wbArg_getOutputFile(args);
-  //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
+  wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
   wbExport(oFile, outputImage);
 
   cudaFree(deviceOutputImageData);
