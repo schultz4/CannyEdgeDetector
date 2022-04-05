@@ -2,22 +2,26 @@
 
 void Histogram_Sequential(unsigned char *image, int width, int height, int *hist)
 {
+	// Row pointer
 	unsigned char* matrix = image;
 
+	// Loop through every pixel
 	for (int i = 0; i < width; i++)
 	{
 		for (int j = 0; j < height; j++)
 		{
+			// Update histogram
 			hist[matrix[j]]++;
 		}
 
+		// Update row pointer
 		matrix += height;
 
 	}
 
 }
 
-char Threshold_Sequential(int* histogram)
+double Otsu_Sequential(int* histogram)
 {
 
 	// Calculate the bin_edges
@@ -87,4 +91,42 @@ char Threshold_Sequential(int* histogram)
 
 	return bin_mids[getmax];
 
+}
+
+void Threshold_Sequential(unsigned char *image, unsigned char *strong_edges, unsigned char *weak_edges, int width, int height, double thresh)
+{
+	// Row pointer
+	unsigned char *matrix = image;
+
+	// Threshold from Otsu's method
+	double upper_thresh = thresh;
+
+	// Lower threshold calculated from Canny
+	double lower_thresh = thresh - 0.2;
+
+	// Loop through all pixels
+	for (int i = 0; i < width; i++)
+	{
+		for (int j = 0; j < height; j++)
+		{
+			// Strong edges
+			if (matrix[j] > upper_thresh)
+			{
+				// Write pixel value to strong_edges matrix
+				strong_edges[j] = matrix[j];
+			}
+			// weak edges
+			else if(matrix[j] <= upper_thresh && matrix[j] > lower_thresh)
+			{
+				// Write pixel value to weak_edges matrix
+				weak_edges[j] = matrix[j];
+			}
+		}
+
+		// Update row pointers
+		matrix += height;
+		strong_edges += height;
+		weak_edges += height;
+
+	}
 }
