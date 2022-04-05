@@ -14,7 +14,7 @@
 
 //@@ INSERT DEVICE CODE HERE
 
-__global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height) {
+__global__ void ColorToGrayscale(float *inImg, int *outImg, int width, int height) {
         int idx, grayidx;
         int col = blockDim.x * blockIdx.x + threadIdx.x;
         int row  = blockDim.y * blockIdx.y + threadIdx.y;
@@ -30,7 +30,7 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
                 float r = inImg[idx];           //red
                 float g = inImg[idx + 1];       //green
                 float b = inImg[idx + 2];       //blue
-                outImg[grayidx]  = (0.21*r + 0.71*g + 0.07*b);
+                outImg[grayidx]  = (int)((0.21*r + 0.71*g + 0.07*b)*255);
 	}
 }
 
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   //float *deviceBlurImageData;
   //float *deviceGradientImageData;
   //float *deviceSobelImageData;
-  float *deviceOutputImageData;
+  int *deviceOutputImageData;
 
   args = wbArg_read(argc, argv); /* parse the input arguments */
 
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   cudaMalloc((void **)&deviceInputImageData,
              imageWidth * imageHeight * imageChannels * sizeof(float));
   cudaMalloc((void **)&deviceOutputImageData,
-             imageWidth * imageHeight * sizeof(float));
+             imageWidth * imageHeight * sizeof(int));
   wbTime_stop(GPU, "Doing GPU memory allocation");
 
   wbTime_start(Copy, "Copying data to the GPU");
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
   ///////////////////////////////////////////////////////
   wbTime_start(Copy, "Copying data from the GPU");
   cudaMemcpy(hostOutputImageData, deviceOutputImageData,
-             imageWidth * imageHeight * sizeof(float),
+             imageWidth * imageHeight * sizeof(int),
              cudaMemcpyDeviceToHost);
   wbTime_stop(Copy, "Copying data from the GPU");
  
