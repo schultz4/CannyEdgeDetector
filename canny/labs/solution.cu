@@ -14,38 +14,6 @@
     }                                                                     \
   } while (0)
 
-
-void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
-{
-    double scaleVal = 1;
-    double stDev = (double)FILTERSIZE/3;
-
-    for (int i = 0; i < FILTERSIZE; ++i) {
-        for (int j = 0; j < FILTERSIZE; ++j) {
-            double xComp = pow((i - FILTERSIZE/2), 2);
-            double yComp = pow((j - FILTERSIZE/2), 2);
-
-            double stDevSq = pow(stDev, 2);
-            double pi = M_PI;
-
-            //calculate the value at each index of the Kernel
-            double filterVal = exp(-(((xComp) + (yComp)) / (2 * stDevSq)));
-            filterVal = (1 / (sqrt(2 * pi)*stDev)) * filterVal;
-
-            //populate Kernel
-            outFilter[i][j] =filterVal;
-
-            if (i==0 && j==0) 
-            {
-                scaleVal = outFilter[0][0];
-            }
-
-            //normalize Kernel
-            outFilter[i][j] = outFilter[i][j] / scaleVal;
-        }
-    }
-}
-
 // make a void sequential here
 
 // make a void parallel
@@ -127,18 +95,18 @@ int main(int argc, char *argv[]) {
   double filter[FILTERSIZE][FILTERSIZE];
   populate_blur_filter(filter);
   int filterSize = (int)FILTERSIZE;
-
+  
   // 256 = 16 * 16
   int blocksize = 16;
   dim3 BlockDim(blocksize,blocksize);
-  //dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
-  dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
+  dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
+  //dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
 
   // call the greyscale function
   ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
   // and then blur the image
   Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
-  GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
+  GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceGradientImageData, imageHeight, imageWidth); 
 
 
   wbTime_stop(Compute, "Doing the computation on the GPU");
@@ -155,14 +123,34 @@ int main(int argc, char *argv[]) {
   cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);  
-  
+ 
+  ///////////////////////////////////////////////////////////
+  // test the serial implementation with the grayscale image
+  ///////////////////////////////////////////////////////////
+  int *BlurImageData;
+  float *SobelImageData;
+  float *GradientImageData;
+  BlurImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
+  SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+  GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
+  Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
+  GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+
+  std::cout << "Finished with Serial" << std::endl;
+  //////////////////////////////////////////////////////////
+  // end serial implementation
+  //////////////////////////////////////////////////////////
+
+  
   //wbSolution(args, outputImage);
   cudaFree(deviceInputImageData);
   cudaFree(deviceGrayImageData);
   cudaFree(deviceBlurImageData);
   cudaFree(deviceSobelImageData);
   cudaFree(deviceGradientImageData);
+
+
   //char *oFile = wbArg_getOutputFile(args);
   //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
   //wbExport(oFile, outputImage);
