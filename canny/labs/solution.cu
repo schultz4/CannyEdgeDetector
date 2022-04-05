@@ -1,5 +1,8 @@
 #include <wb.h>
+#include "filters.cu"
 #include "Otsus_Method.h"
+
+#define FILTERSIZE 3
 
 #define wbCheck(stmt)                                                     \
   do {                                                                    \
@@ -12,27 +15,42 @@
   } while (0)
 
 
-//@@ INSERT DEVICE CODE HERE
+void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
+{
+    double scaleVal = 1;
+    double stDev = (double)FILTERSIZE/3;
 
-__global__ void ColorToGrayscale(float *inImg, int *outImg, int width, int height) {
-        int idx, grayidx;
-        int col = blockDim.x * blockIdx.x + threadIdx.x;
-        int row  = blockDim.y * blockIdx.y + threadIdx.y;
-        int numchannel = 3;
+    for (int i = 0; i < FILTERSIZE; ++i) {
+        for (int j = 0; j < FILTERSIZE; ++j) {
+            double xComp = pow((i - FILTERSIZE/2), 2);
+            double yComp = pow((j - FILTERSIZE/2), 2);
 
+            double stDevSq = pow(stDev, 2);
+            double pi = M_PI;
 
-        // x = col and y = row
-        if (col >= 0 && col < width && row >=0 && row < height) {
-                // each spot is 3 big (rgb) so get the number of spots
-                grayidx = row * width + col;
-                idx     = grayidx * numchannel; // and multiply by three
-                // to calculate the beginning of the 3 for that pixel
-                float r = inImg[idx];           //red
-                float g = inImg[idx + 1];       //green
-                float b = inImg[idx + 2];       //blue
-                outImg[grayidx]  = (int)((0.21*r + 0.71*g + 0.07*b)*255);
-	}
+            //calculate the value at each index of the Kernel
+            double filterVal = exp(-(((xComp) + (yComp)) / (2 * stDevSq)));
+            filterVal = (1 / (sqrt(2 * pi)*stDev)) * filterVal;
+
+            //populate Kernel
+            outFilter[i][j] =filterVal;
+
+            if (i==0 && j==0) 
+            {
+                scaleVal = outFilter[0][0];
+            }
+
+            //normalize Kernel
+            outFilter[i][j] = outFilter[i][j] / scaleVal;
+        }
+    }
 }
+
+// make a void sequential here
+
+// make a void parallel
+
+// make a void tiled/shared memory here
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
@@ -42,21 +60,21 @@ int main(int argc, char *argv[]) {
   int imageHeight;
   char *inputImageFile;
   wbImage_t inputImage;
-  wbImage_t outputImage;
+  //wbImage_t outputImage;
 
   float *hostInputImageData;
-  //float *hostGrayImageData;
-  //float *hostBlurImageData;
-  //float *hostGradientImageData;
-  //float *hostSobelImageData;
-  float *hostOutputImageData;
+  int *hostGrayImageData;
+  int *hostBlurImageData;
+  float *hostGradientImageData;
+  float *hostSobelImageData;
+  //int *hostOutputImageData;
 
   float *deviceInputImageData;
-  //float *deviceGrayImageData;
-  //float *deviceBlurImageData;
-  //float *deviceGradientImageData;
-  //float *deviceSobelImageData;
-  int *deviceOutputImageData;
+  int *deviceGrayImageData;
+  int *deviceBlurImageData;
+  float *deviceGradientImageData;
+  float *deviceSobelImageData;
+  //int *deviceOutputImageData;
 
   args = wbArg_read(argc, argv); /* parse the input arguments */
 
@@ -70,10 +88,17 @@ int main(int argc, char *argv[]) {
   imageChannels = wbImage_getChannels(inputImage);
 
   // Since the image is monochromatic, it only contains one channel
-  outputImage = wbImage_new(imageWidth, imageHeight, 1);
+  // set up the images
+  //outputImage = wbImage_new(imageWidth, imageHeight, 1);
 
-  hostInputImageData  = wbImage_getData(inputImage);
-  hostOutputImageData = wbImage_getData(outputImage);
+  hostInputImageData    = wbImage_getData(inputImage);
+  //hostOutputImageData = wbImage_getData(outputImage);
+  hostGrayImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
+  hostBlurImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
+  hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+  hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+  //hostOutputImageData = (int *)malloc(imageHeight*imageWidth*sizeof(int));
 
   wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
 
@@ -83,8 +108,12 @@ int main(int argc, char *argv[]) {
   wbTime_start(GPU, "Doing GPU memory allocation");
   cudaMalloc((void **)&deviceInputImageData,
              imageWidth * imageHeight * imageChannels * sizeof(float));
-  cudaMalloc((void **)&deviceOutputImageData,
-             imageWidth * imageHeight * sizeof(int));
+  cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(int));
+  cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
+  cudaMalloc((void **)&deviceSobelImageData, imageWidth*imageHeight*sizeof(int));
+  cudaMalloc((void **)&deviceGradientImageData, imageWidth*imageHeight*sizeof(int));
+//  cudaMalloc((void **)&deviceOutputImageData,
+//             imageWidth * imageHeight * sizeof(int));
   wbTime_stop(GPU, "Doing GPU memory allocation");
 
   wbTime_start(Copy, "Copying data to the GPU");
@@ -95,89 +124,52 @@ int main(int argc, char *argv[]) {
 
   ///////////////////////////////////////////////////////
   wbTime_start(Compute, "Doing the computation on the GPU");
-  // GRAYSCALE
+  double filter[FILTERSIZE][FILTERSIZE];
+  populate_blur_filter(filter);
+  int filterSize = (int)FILTERSIZE;
 
   // 256 = 16 * 16
   int blocksize = 16;
   dim3 BlockDim(blocksize,blocksize);
-  dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
-  
- // GridDim.x = (imageWidth + BlockDim.x - 1) / BlockDim.x;
- // GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
+  //dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
+  dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
 
   // call the greyscale function
-  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceOutputImageData, imageWidth, imageHeight);
+  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
+  // and then blur the image
+  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
+  GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
 
 
   wbTime_stop(Compute, "Doing the computation on the GPU");
 
   ///////////////////////////////////////////////////////
   wbTime_start(Copy, "Copying data from the GPU");
-  cudaMemcpy(hostOutputImageData, deviceOutputImageData,
-             imageWidth * imageHeight * sizeof(int),
-             cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
+  //cudaMemcpy(hostOutputImageData, deviceOutputImageData,
+  //           imageWidth * imageHeight * sizeof(int),
+  //           cudaMemcpyDeviceToHost);
   wbTime_stop(Copy, "Copying data from the GPU");
  
   wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
+  cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+  cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);  
+  
 
   //wbSolution(args, outputImage);
   cudaFree(deviceInputImageData);
-  //////////////////////////////////////////////////////////////
-  // END GRAYSCALE
-  ///////////////////////////////////////////////////////////
-/*
-  //////////////////////////////////////////////////////////
-  // START GAUSSIAN BLUR 
-  ///////////////////////////////////////////////////////
-  cudaMalloc((void**)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float));
-  cudaMemcpy(deviceGrayImageData, hostGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
-  int block_dim  = 1024;
-  int num_blocks = (int)ceil((imageWidth*imageHeight) / block_dim);
-  dim3 gridDim(gridsize);
-  dim3 blockDim(blocksize);
-  // todo get the acutal filter here
-  float *hostFilter = gaussianFilter();
-  float *deviceFilter;
-  cudaMemcpy(deviceFilter, hostFilter, filtersize*filterSize*sizeof(float), cudaMemcpyHostToDevice);
-  GaussianFilter<<<gridDim, blockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-
-  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-
   cudaFree(deviceGrayImageData);
+  cudaFree(deviceBlurImageData);
+  cudaFree(deviceSobelImageData);
+  cudaFree(deviceGradientImageData);
+  //char *oFile = wbArg_getOutputFile(args);
+  //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
+  //wbExport(oFile, outputImage);
 
-  /////////// ///////////////////////////////////////
-  // END GAUSS BLUR
-  //////////////////////////////////////////////////
-  //////////////////////////////////////////////////
-  // START SOBEL
-  /////////////////////////////////////////////////
+  //cudaFree(deviceOutputImageData);
 
-  cudaMalloc((void**)&deviceSobelImageData, imageWidth*imageHeight*sizeof(float));
-  cudaMalloc((void**)&deviceGradientImageData, imageWidth*imageHeight*sizeof(float));
-  cudaMemcpy(deviceBlurImageData, hostBlurImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
-  
-  dim3 BlockDim(16,16);
-  dim3 GridDim;
-
-  GridDim.x = (imageWidth + BlockDim.x - 1) / BlockDim.x;
-  GridDim.y = (imageHeight + BlockDim.y - 1) / BlockDim.y;
-
-  SobelFilterGradient(deviceBlurImageData, deviceSobelImageData, deviceGradientImageData, imageWidth, imageHeight);
-
-  cudaMemcpy(hostSobelImageData, devideSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cuaMemcpyDeviceToHost);
-
-  ///////////////////////////////////////////////
-  // END SOBEL AND GRADIENT CALC
-  //////////////////////////////////////////////
-*/
-  char *oFile = wbArg_getOutputFile(args);
-  wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
-  wbExport(oFile, outputImage);
-
-  cudaFree(deviceOutputImageData);
-
-  wbImage_delete(outputImage);
+  //wbImage_delete(outputImage);
   wbImage_delete(inputImage);
 
   return 0;
