@@ -139,11 +139,6 @@ int main(int argc, char *argv[]) {
 
   Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
   GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
-
-  std::cout << "Finished with Serial" << std::endl;
-  //////////////////////////////////////////////////////////
-  // end serial implementation
-  //////////////////////////////////////////////////////////
   
   Histogram_Sequential(deviceGrayImageData, histogram, imageWidth, imageHeight);
 
@@ -162,7 +157,13 @@ int main(int argc, char *argv[]) {
   printf("Image[20] = %f\n",hostGrayImageData[20]);
   printf("Otsu's Threshold = %f\n", thresh);
   printf("\n");
+
+  std::cout << "Finished with Serial" << std::endl;
+  //////////////////////////////////////////////////////////
+  // end serial implementation
+  //////////////////////////////////////////////////////////
   
+
   //wbSolution(args, outputImage);
   cudaFree(deviceInputImageData);
   cudaFree(deviceGrayImageData);
@@ -172,7 +173,7 @@ int main(int argc, char *argv[]) {
 
 
   //char *oFile = wbArg_getOutputFile(args);
-  //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
+  //wbExport(oFile, hostGrayImageData, imageWidth, imageHeight);
   //wbExport(oFile, outputImage);
 
   //cudaFree(deviceOutputImageData);
