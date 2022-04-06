@@ -14,7 +14,6 @@
     }                                                                     \
   } while (0)
 
-
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 {
     double scaleVal = 1;
@@ -46,151 +45,242 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
     }
 }
 
-// make a void sequential here
+int main(int argc, char *argv[])
+{
 
-// make a void parallel
-
-// make a void tiled/shared memory here
-
-// Also modify the main function to launch thekernel.
-int main(int argc, char *argv[]) {
-  wbArg_t args;
-  int imageChannels;
-  int imageWidth;
-  int imageHeight;
-  char *inputImageFile;
-  wbImage_t inputImage;
-  //wbImage_t outputImage;
-
-  float *hostInputImageData;
-  int *hostGrayImageData;
-  int *hostBlurImageData;
-  float *hostGradientImageData;
-  float *hostSobelImageData;
-  //int *hostOutputImageData;
-
-  float *deviceInputImageData;
-  int *deviceGrayImageData;
-  int *deviceBlurImageData;
-  float *deviceGradientImageData;
-  float *deviceSobelImageData;
-  //int *deviceOutputImageData;
-
-  unsigned int *histogram;
-  histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
-
-  args = wbArg_read(argc, argv); /* parse the input arguments */
-
-  inputImageFile = wbArg_getInputFile(args, 0);
-
-  inputImage = wbImport(inputImageFile);
-
-  imageWidth  = wbImage_getWidth(inputImage);
-  imageHeight = wbImage_getHeight(inputImage);
-  // For this lab the value is always 3
-  imageChannels = wbImage_getChannels(inputImage);
-
-  // Since the image is monochromatic, it only contains one channel
-  // set up the images
-  //outputImage = wbImage_new(imageWidth, imageHeight, 1);
-
-  hostInputImageData    = wbImage_getData(inputImage);
-  //hostOutputImageData = wbImage_getData(outputImage);
-  hostGrayImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-  hostBlurImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-  hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-  hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-
-  //hostOutputImageData = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-
-  wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
-
-  ////////////////////////////////////////////////
-// GRAYSCALE MEMORY SETUP
-  ///////////////////////////////////////////////
-  wbTime_start(GPU, "Doing GPU memory allocation");
-  cudaMalloc((void **)&deviceInputImageData,
-             imageWidth * imageHeight * imageChannels * sizeof(float));
-  cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(int));
-  cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
-  cudaMalloc((void **)&deviceSobelImageData, imageWidth*imageHeight*sizeof(int));
-  cudaMalloc((void **)&deviceGradientImageData, imageWidth*imageHeight*sizeof(int));
-//  cudaMalloc((void **)&deviceOutputImageData,
-//             imageWidth * imageHeight * sizeof(int));
-  wbTime_stop(GPU, "Doing GPU memory allocation");
-
-  wbTime_start(Copy, "Copying data to the GPU");
-  cudaMemcpy(deviceInputImageData, hostInputImageData,
-             imageWidth * imageHeight * imageChannels * sizeof(float),
-             cudaMemcpyHostToDevice);
-  wbTime_stop(Copy, "Copying data to the GPU");
-
-  ///////////////////////////////////////////////////////
-  wbTime_start(Compute, "Doing the computation on the GPU");
-  double filter[FILTERSIZE][FILTERSIZE];
-  populate_blur_filter(filter);
-  int filterSize = (int)FILTERSIZE;
-
-  // 256 = 16 * 16
-  int blocksize = 16;
-  dim3 BlockDim(blocksize,blocksize);
-  //dim3 GridDim(ceil(imageWidth/blocksize), ceil(imageHeight/blocksize));
-  dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
-
-  // call the greyscale function
-  ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
-  // and then blur the image
-  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
-  GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
+	//////////////////////////////
+	// Parameter Initialization //
+	//////////////////////////////
 
 
-  wbTime_stop(Compute, "Doing the computation on the GPU");
+	// Image parameters for wbLib
+	wbArg_t args;
+	int imageChannels;
+	int imageWidth;
+	int imageHeight;
+	char *inputImageFile;
+	wbImage_t inputImage;
+	wbImage_t outputImage;
 
-  ///////////////////////////////////////////////////////
-  wbTime_start(Copy, "Copying data from the GPU");
-  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
-  //cudaMemcpy(hostOutputImageData, deviceOutputImageData,
-  //           imageWidth * imageHeight * sizeof(int),
-  //           cudaMemcpyDeviceToHost);
-  wbTime_stop(Copy, "Copying data from the GPU");
- 
-  wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
-  cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyHostToDevice);
-  cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);  
-  
-  Histogram_Sequential(deviceGrayImageData, histogram, imageWidth, imageHeight);
+	// Host side parameters
+	float *hostInputImageData;
+	float *hostGrayImageData;
+	float *hostBlurImageData;
+	float *hostGradientImageData;
+	float *hostSobelImageData;
 
-  double thresh = Otsu_Sequential(histogram);
+	// Device side parameters
+	float *deviceInputImageData;
+	float *deviceGrayImageData;
+	float *deviceBlurImageData;
+	float *deviceGradientImageData;
+	float *deviceSobelImageData;
+	
+	// Otsu's Method parameters
+	unsigned int *histogram;
 
-  printf("\n");
-  printf("Width = %u\n",imageWidth);
-  printf("Height = %u\n",imageHeight);
-  printf("Histogram[0] = %u\n",histogram[0]);
-  printf("Histogram[1] = %u\n",histogram[1]);
-  printf("Histogram[20] = %u\n",histogram[20]);
-  printf("Histogram[45] = %u\n",histogram[45]);
-  printf("Histogram[56] = %u\n",histogram[56]);
-  printf("Image[0] = %f\n",hostGrayImageData[0]);
-  printf("Image[1] = %f\n",hostGrayImageData[1]);
-  printf("Image[20] = %f\n",hostGrayImageData[20]);
-  printf("Otsu's Threshold = %f\n", thresh);
-  printf("\n");
 
-  //wbSolution(args, outputImage);
-  cudaFree(deviceInputImageData);
-  cudaFree(deviceGrayImageData);
-  cudaFree(deviceBlurImageData);
-  cudaFree(deviceSobelImageData);
-  cudaFree(deviceGradientImageData);
-  //char *oFile = wbArg_getOutputFile(args);
-  //wbExport(oFile, hostOutputImageData, imageWidth, imageHeight);
-  //wbExport(oFile, outputImage);
+	////////////////////
+	// Image Handling //
+	////////////////////
 
-  //cudaFree(deviceOutputImageData);
 
-  //wbImage_delete(outputImage);
-  wbImage_delete(inputImage);
+	// Parse the input arguments
+	args = wbArg_read(argc, argv);
 
-  return 0;
+	// Read input file
+	inputImageFile = wbArg_getInputFile(args, 0);
+
+	// Import input image 
+	inputImage = wbImport(inputImageFile);
+
+	// Scrape info from input image
+	imageWidth  = wbImage_getWidth(inputImage);
+	imageHeight = wbImage_getHeight(inputImage);
+	imageChannels = wbImage_getChannels(inputImage);
+	
+	// Define new output image
+	outputImage = wbImage_new(imageWidth, imageHeight, 1);
+
+	// Define output image data
+	hostInputImageData = wbImage_getData(inputImage);
+
+	// CHANGE THIS TO CHANGE OUTPUT IMAGE
+	hostGrayImageData = wbImage_getData(outputImage);
+
+
+	////////////////////////////////
+	// Host Memory Initialization //
+	////////////////////////////////
+
+
+	// Allocate memory on host
+	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+	// Allocate memory on host and set to 0
+	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
+
+
+	/////////////////////////
+	// Image Preprocessing //
+	/////////////////////////
+
+
+	// Create filter skeleton
+	double filter[FILTERSIZE][FILTERSIZE];
+
+	// Fill the gaussian filter
+	populate_blur_filter(filter);
+
+	// ?????
+	int filterSize = (int)FILTERSIZE;
+
+
+	//////////////////////////////////
+	// Device Memory Initialization //
+	//////////////////////////////////
+
+
+	// Start total program timer
+	wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
+
+	// Start memory allocation timer
+	wbTime_start(GPU, "Doing GPU memory allocation");
+
+	// Allocate memory on device
+	cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float));
+	cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
+	cudaMalloc((void **)&deviceSobelImageData, imageWidth*imageHeight*sizeof(int));
+	cudaMalloc((void **)&deviceGradientImageData, imageWidth*imageHeight*sizeof(int));
+
+	// Stop memory allocation timer
+	wbTime_stop(GPU, "Doing GPU memory allocation");
+
+	// Start memory copy timer
+	wbTime_start(Copy, "Copying data to the GPU");
+
+	// Copy input image from host to device
+	cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels*imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+
+
+	///////////////////
+	// GPU Execution //
+	///////////////////
+
+
+	// Start computation timer
+	wbTime_start(Compute, "Doing the computation on the GPU");
+
+	// Number of threads/block is 16
+	int blocksize = 16;
+
+	// Initialize x and y block dimension to blocksize
+	dim3 BlockDim(blocksize,blocksize);
+
+	// Set x and y grid dimension 
+	dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
+
+	// Call RGB to grayscale conversion kernel
+	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
+
+	// Call image burring kernel
+	//Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
+
+	// Call sobel filtering kernel
+	//GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
+
+	// Stop computation timer
+	wbTime_stop(Compute, "Doing the computation on the GPU");
+
+
+	////////////////////
+	// Device Results //
+	////////////////////
+
+
+	// Start device memory copy timer
+	wbTime_start(Copy, "Copying data from the GPU");
+
+	// Copy data from device back to host
+	cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+	//cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
+	//cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyHostToDevice);
+	//cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+	//cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice); 
+
+	// Stop memory timer
+	wbTime_stop(Copy, "Copying data from the GPU");
+
+	// Stop total program timer
+	wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
+
+	
+	////////////////////
+	// Host Execution //
+	////////////////////
+
+
+	// Calculate histogram of blurred image
+	Histogram_Sequential(hostGrayImageData, histogram, imageWidth, imageHeight);
+
+	// Calculate threshold using Otsu's Method
+	double thresh = Otsu_Sequential(histogram);
+
+
+	////////////////////
+	// Debugging Info //
+	////////////////////
+
+
+	// Print info
+	printf("\n");
+	printf("Width = %u\n",imageWidth);
+	printf("Height = %u\n",imageHeight);
+	printf("InputImage[0] = %f\n",hostInputImageData[0]);
+	printf("Histogram[0] = %u\n",histogram[0]);
+	printf("Histogram[1] = %u\n",histogram[1]);
+	printf("Histogram[20] = %u\n",histogram[20]);
+	printf("Histogram[45] = %u\n",histogram[45]);
+	printf("Histogram[56] = %u\n",histogram[56]);
+	printf("Image[0] = %f\n",hostGrayImageData[0]);
+	printf("Image[1] = %f\n",hostGrayImageData[1]);
+	printf("Image[36] = %f\n",hostGrayImageData[36]);
+	printf("Image[400] = %f\n",hostGrayImageData[400]);
+	printf("Image[900] = %f\n",hostGrayImageData[900]);
+	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
+	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
+	printf("Otsu's Threshold = %f\n", thresh);
+	printf("\n");
+
+	// Export image
+	char *oFile = wbArg_getOutputFile(args);
+	wbExport(oFile, outputImage);
+
+
+	//////////////
+	// Clean Up //
+	//////////////
+
+
+	// Destory all cuda memory
+	cudaFree(deviceInputImageData);
+	cudaFree(deviceGrayImageData);
+	cudaFree(deviceBlurImageData);
+	cudaFree(deviceSobelImageData);
+	cudaFree(deviceGradientImageData);
+
+	// Destroy all host memory
+	free(hostBlurImageData);
+	free(hostSobelImageData);
+	free(hostGradientImageData);
+	free(histogram);
+
+	// Destroy images
+	wbImage_delete(outputImage);
+	wbImage_delete(inputImage);
+
+	return 0;
 }
