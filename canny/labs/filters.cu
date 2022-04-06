@@ -50,7 +50,7 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 
 
 // convert the image to grayscale
-__global__ void ColorToGrayscale(float *inImg, int *outImg, int width, int height) {
+__global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height) {
    int idx, grayidx;
    int col = blockDim.x * blockIdx.x + threadIdx.x;
    int row  = blockDim.y * blockIdx.y + threadIdx.y;
@@ -65,7 +65,7 @@ __global__ void ColorToGrayscale(float *inImg, int *outImg, int width, int heigh
       float r = inImg[idx];           //red
       float g = inImg[idx + 1];       //green
       float b = inImg[idx + 2];       //blue
-      outImg[grayidx]  = (int)((0.21*r + 0.71*g + 0.07*b)*255);
+      outImg[grayidx]  = (0.21*r + 0.71*g + 0.07*b);
    }
 }
 

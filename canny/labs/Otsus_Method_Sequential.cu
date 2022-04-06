@@ -1,17 +1,21 @@
 #include "Otsus_Method.h"
+#include <cmath>
 
-void Histogram_Sequential(int *image, unsigned int *hist, int width, int height)
+void Histogram_Sequential(float *image, unsigned int *hist, int width, int height)
 {
 	// Row pointer
-	int* matrix = image;
+	float* matrix = image;
 
 	// Loop through every pixel
 	for (int i = 0; i < width; i++)
 	{
 		for (int j = 0; j < height; j++)
 		{
+			// Calculate position
+			int pos = floor(matrix[j]*255 + 0.5);
+			
 			// Update histogram
-			hist[matrix[j]]++;
+			hist[pos]++;
 		}
 
 		// Update row pointer
