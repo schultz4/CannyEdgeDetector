@@ -2,8 +2,7 @@
 // For the gaussian blur = Conv2D
 // and the sobel filter which gives the 
 //  gradient descent = GradientSobel
-
-#define FILTERSIZE 3
+#include "filters.h"
 
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 {
