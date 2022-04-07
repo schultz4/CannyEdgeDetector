@@ -35,8 +35,12 @@ cuda_add_library( ${target_otsu} ${sources_otsu} )
 ################################################################################
 # nonmaxsupp
 ################################################################################
-set( sources_non_max_supp_serial
+set( target_nms nms )
+set( sources_nms
+  ${PROJECT_SOURCE_DIR}/non_max_supp.cu
   )
+
+cuda_add_library( ${target_nms} ${sources_nms} )
 
 ################################################################################
 ################################################################################
@@ -54,6 +58,7 @@ set( target_canny_serial CannyImage_Serial )
 set( canny_serial_libs
   ${target_filters}
   ${target_otsu}
+  ${target_nms}
   ${WBLIB} 
   )
 
@@ -73,6 +78,7 @@ set(target_canny_gpu CannyImage_Solution )
 set( canny_gpu_libs
   ${target_filters}
   ${target_otsu}
+  ${target_nms}
   ${WBLIB} 
   )
 
