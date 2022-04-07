@@ -97,40 +97,30 @@ double Otsu_Sequential(unsigned int* histogram)
 
 }
 
-void Threshold_Sequential(unsigned char *image, unsigned char *strong_edges, unsigned char *weak_edges, int width, int height, double thresh)
+__global__ void NaiveHistogram(unsigned char *image, int width, int height, int *hist)
 {
-	// Row pointer
-	unsigned char *matrix = image;
+    // Calculate threadID in x and y directions
+    int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+    int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
 
-	// Threshold from Otsu's method
-	double upper_thresh = thresh;
+    // Calculate linear threadID
+    int tid = threadIdx.x + threadIdx.y * blockDim.x;
 
-	// Lower threshold calculated from Canny
-	double lower_thresh = thresh - 0.2;
+    // Calculate number of threads in x and y directions
+    int num_threads_x = blockDim.x * gridDim.x;
+    int num_threads_y = blockDim.y * gridDim.y;
 
-	// Loop through all pixels
-	for (int i = 0; i < width; i++)
-	{
-		for (int j = 0; j < height; j++)
-		{
-			// Strong edges
-			if (matrix[j] > upper_thresh)
-			{
-				// Write pixel value to strong_edges matrix
-				strong_edges[j] = matrix[j];
-			}
-			// weak edges
-			else if(matrix[j] <= upper_thresh && matrix[j] > lower_thresh)
-			{
-				// Write pixel value to weak_edges matrix
-				weak_edges[j] = matrix[j];
-			}
-		}
+    // Calculate linear blockID
+    int bid = blockIdx.x + blockIdx.y * gridDim.x;
 
-		// Update row pointers
-		matrix += height;
-		strong_edges += height;
-		weak_edges += height;
+    // Loop through all pixels
+    for (int col = tid_x; col < width; col += num_threads_x)
+    {
+        for (int row = tid_y; row < height; row += num_threads_y)
+        {
+            unsigned char pos = image[tid];
+            atomicAdd(&hist[pos], 1);
+        }
+    }
 
-	}
 }
