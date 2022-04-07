@@ -2,6 +2,7 @@
 #include <wb.h>
 #include "Otsus_Method.h"
 #include "filters.h"
+#include "Edge_Connection.h"
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
@@ -115,6 +116,12 @@ int main(int argc, char *argv[]) {
 
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
+
+	// Calculate strong, weak, and non edges using thresholds
+	//threshold_detection_serial(BlurImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight)
+
+	// Connect edges by connecting weak edges to strong edges
+	//edge_connection_serial(weakEdgeImage, edgeImage, imageWidth, imageHeight)
 
 
 	////////////////////
