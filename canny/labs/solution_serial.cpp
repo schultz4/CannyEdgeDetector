@@ -2,6 +2,7 @@
 #include <wb.h>
 #include "Otsus_Method.h"
 #include "filters.h"
+#include "non_max_supp.h"
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
