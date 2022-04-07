@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 	imageChannels = wbImage_getChannels(inputImage);
 	
 	// Define new output image
-	outputImage = wbImage_new(imageWidth, imageHeight, 1);
+	outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
 
 	// Define output image data
 	hostInputImageData = wbImage_getData(inputImage);

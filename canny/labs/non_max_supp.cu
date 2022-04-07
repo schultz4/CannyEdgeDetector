@@ -12,6 +12,15 @@ float maxSupp(float center, float p1, float p2, float p3, float p4)
   }
 }
 
+float getPoint(float *img, int rIdx, int cIdx, int height, int width)
+{
+  if (!img || rIdx < 0 || rIdx >= width || cIdx < 0 || cIdx >= height)
+  {
+    return 0.0;
+  }
+  return *(img + cIdx + rIdx*width);
+}
+
 void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
 {
   //Mat             sMatGradPad;
@@ -46,24 +55,38 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       {
         case 0:
   //        pOne   = (Point(0, 1)); pTwo   = (Point(0, 2)); pThree = (Point(-1, 0)); pFour  = (Point(-2, 0));
-          p1 = *(grad + (j + 1)*width + i);
-          p2 = *(grad + (j + 2)*witdh + i);
-          p3 = *(grad + j*witdh + i - 1);
-          p4 = *(grad + j*witdh + i - 2);
-          *(nmsImg + j*width + i) = maxSupp(angle, p1, p2, p3, p4);
+          p1 = getPoint(inImg, i, j+i, height, width);
+          p2 = getPoint(inImg, i, j+2, height, width);
+          p3 = getPoint(inImg, i-1, j, height, width);
+          p4 = getPoint(inImg, i-2, j, height, width);
           break;
         case 45:
   //        pOne   = (Point(-1, -1)); pTwo   = (Point(-2, -2)); pThree = (Point(1, 1)); pFour  = (Point(2, 2));
+          p1 = getPoint(inImg, i-1, j-1, height, width);
+          p2 = getPoint(inImg, i-2, j-2, height, width);
+          p3 = getPoint(inImg, i+1, j+1, height, width);
+          p4 = getPoint(inImg, i+2, j+2, height, width);
           break;
         case 90:
   //        pOne   = (Point(-1, 0)); pTwo   = (Point(-2, 0)); pThree = (Point(1, 0)); pFour  = (Point(2, 0));
+          p1 = getPoint(inImg, i-1, j, height, width);
+          p2 = getPoint(inImg, i-2, j, height, width);
+          p3 = getPoint(inImg, i+1, j, height, width);
+          p4 = getPoint(inImg, i+2, j, height, width);
           break;
         case 135:
   //        pOne   = (Point(-1, 1)); pTwo   = (Point(-2, 2)); pThree = (Point(1, -1)); pFour  = (Point(2, -2));
+          p1 = getPoint(inImg, i-1, j+1, height, width);
+          p2 = getPoint(inImg, i-2, j+2, height, width);
+          p3 = getPoint(inImg, i+1, j-1, height, width);
+          p4 = getPoint(inImg, i+2, j-2, height, width);
           break;
         default:
           break;
       }
+
+      float center = getPoint(inImg, i, j, height, width);
+      *(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
     }
   }
   //for (int i = s32Pad; i < sMatGradPad.rows - s32Pad; i++){
