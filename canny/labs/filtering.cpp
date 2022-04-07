@@ -3,11 +3,7 @@
 //
 #define FILTERSIZE 3
 
-<<<<<<< Updated upstream
 __global__ void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
-=======
-__global__ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
->>>>>>> Stashed changes
     // find center position of kernel (half of kernel size)
     int filterHalf = filterSize / 2;
 
@@ -19,18 +15,13 @@ __global__ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSI
         {
             int start_col = col - halfFilter;
             int start_row = row - halfFilter;
-<<<<<<< Updated upstream
 	    int pixelvalue = 0;
-=======
-	    	float pixelvalue = 0;
->>>>>>> Stashed changes
 
             // then for each pixel iterate through the filter
             for(int j=0; j < filterSize; ++j)     // filter rows
             {
                 for(int k=0; k < filterSize; ++k) // kernel columns
                 {
-<<<<<<< Updated upstream
 		    int cur_row = start_row + j;
                     int cur_col = start_col + k;
 		    if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width) {
@@ -42,21 +33,6 @@ __global__ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSI
         }
     }
 }
-=======
-					int cur_row = start_row + j;
-		            int cur_col = start_col + k;
-					if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width)
-					{
-	                	pixelvalue += inImg[cur_row*width + cur_col] * filter[j][k];
-		    		}
-                }
-            }
-            outImg[row*width+col] = pixelvalue;
-        }
-    }
-}
-
->>>>>>> Stashed changes
 __global__ void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int height, int width) {
 
    int filterSize = (int)FILTERSIZE;
