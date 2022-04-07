@@ -4,7 +4,7 @@
 
 void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize);
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE]);
-void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int height, int width); 
+void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width); 
 #ifdef __CUDACC__
 __global__ void ColorToGrayscale(float *inImg, int *outImg, int width, int height); 
 #endif

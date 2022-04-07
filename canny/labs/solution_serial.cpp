@@ -2,6 +2,7 @@
 #include <wb.h>
 #include "Otsus_Method.h"
 #include "filters.h"
+#include "non_max_supp.h"
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
@@ -30,6 +31,7 @@ int main(int argc, char *argv[]) {
 	// Filtering parameters
 	float *BlurImageData;
 	float *SobelImageData;
+  float *NmsImageData;
 	float *GradientImageData;
 
 	// Otsu's Method parameters
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
 	imageChannels = wbImage_getChannels(inputImage);
 	
 	// Define new output image
-	outputImage = wbImage_new(imageWidth, imageHeight, 1);
+	outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
 
 	// Define output image data
 	hostInputImageData = wbImage_getData(inputImage);
@@ -77,8 +79,9 @@ int main(int argc, char *argv[]) {
 	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory for serial filtering
-	//BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+  NmsImageData      = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory on host and set to 0
@@ -108,7 +111,10 @@ int main(int argc, char *argv[]) {
 	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	//GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+	GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+
+  // Supress non-local maximums along edges
+  nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);

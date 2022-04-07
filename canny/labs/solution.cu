@@ -1,6 +1,7 @@
 #include <wb.h>
 #include "filters.cu"
 #include "Otsus_Method.h"
+#include "non_max_supp.h"
 
 #define FILTERSIZE 3
 
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
 	// Filtering parameters
 	float *BlurImageData;
 	float *SobelImageData;
+	float *NmsImageData;
 	float *GradientImageData;
 
 	// Otsu's Method parameters
@@ -206,7 +208,10 @@ int main(int argc, char *argv[])
 	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	//GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+	GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+
+  // Suppress non-maximum pixels along gradient
+  nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
@@ -266,6 +271,7 @@ int main(int argc, char *argv[])
 	free(hostGradientImageData);
 	//free(BlurImageData);
 	free(SobelImageData);
+	free(NmsImageData);
 	free(GradientImageData);
 	free(histogram);
 
