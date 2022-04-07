@@ -7,24 +7,28 @@
 
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 {
-    double scaleVal = 1;
-    double stDev = (double)FILTERSIZE/3;
+    //double scaleVal = 1;
+    //double stDev = (double)FILTERSIZE/3;
+
+    double stDevSq = 0.8;
+    double pi = M_PI;
+	 double scaleFac = (1 / (2*pi*stDevSq));
 
     for (int i = 0; i < FILTERSIZE; ++i) {
         for (int j = 0; j < FILTERSIZE; ++j) {
-            double xComp = pow((i - FILTERSIZE/2), 2);
-            double yComp = pow((j - FILTERSIZE/2), 2);
 
-            double stDevSq = pow(stDev, 2);
-            double pi = M_PI;
+			// pow() is slow so just multiply out
+            double xComp = (i + 1 - (FILTERSIZE+1)/2) * (i + 1 - (FILTERSIZE+1)/2);
+            double yComp = (j + 1 - (FILTERSIZE+1)/2) * (j + 1 - (FILTERSIZE+1)/2);
 
             //calculate the value at each index of the Kernel
-            double filterVal = exp(-(((xComp) + (yComp)) / (2 * stDevSq)));
-            filterVal = (1 / (sqrt(2 * pi)*stDev)) * filterVal;
+            double filterVal = exp(-(xComp + yComp) / (2 * stDevSq));
+            filterVal = scaleFac * filterVal;
 
             //populate Kernel
-            outFilter[i][j] =filterVal;
+            outFilter[i][j] = filterVal;
 
+	/*
             if (i==0 && j==0)
             {
                 scaleVal = outFilter[0][0];
@@ -32,21 +36,11 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 
             //normalize Kernel
             outFilter[i][j] = outFilter[i][j] / scaleVal;
+	*/			
+
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // convert the image to grayscale
@@ -164,10 +158,10 @@ __global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, i
 }
 
 
-void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
+void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
+
     // find center position of kernel (half of kernel size)
     int filterHalf = filterSize / 2;
-    
     
     // iterate over rows and coluns of the image
     for(int row=0; row < height; ++row)              // rows
@@ -176,7 +170,7 @@ void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE]
         {
             int start_col = col - filterHalf;
             int start_row = row - filterHalf;
-            int pixelvalue = 0; 
+            float pixelvalue = 0; 
 
             // then for each pixel iterate through the filter
             for(int j=0; j < filterSize; ++j)     // filter rows
@@ -190,7 +184,7 @@ void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE]
                     }
                 }
             }
-            outImg[row*width+col] = (int)(pixelvalue);
+            outImg[row*width+col] = pixelvalue;
         }
     }
 }
@@ -252,13 +246,3 @@ void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int he
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
