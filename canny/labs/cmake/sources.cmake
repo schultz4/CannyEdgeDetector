@@ -28,7 +28,7 @@ cuda_add_library( ${target_filters} ${sources_filters} )
 ################################################################################
 set( target_otsu otsu )
 set( sources_otsu
-  ${PROJECT_SOURCE_DIR}/Otsus_Method_Sequential.cu
+  ${PROJECT_SOURCE_DIR}/Otsus_Method.cu
   )
 cuda_add_library( ${target_otsu} ${sources_otsu} )
 
