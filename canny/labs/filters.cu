@@ -7,6 +7,7 @@
 
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 {
+<<<<<<< Updated upstream
     double scaleVal = 1;
     double stDev = (double)FILTERSIZE/3;
 
@@ -25,6 +26,30 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
             //populate Kernel
             outFilter[i][j] =filterVal;
 
+=======
+    //double scaleVal = 1;
+    //double stDev = (double)FILTERSIZE/3;
+
+    double stDevSq = 0.8;
+    double pi = M_PI;
+	double scaleFac = (1 / (2*pi*stDevSq));
+
+    for (int i = 0; i < FILTERSIZE; ++i) {
+        for (int j = 0; j < FILTERSIZE; ++j) {
+
+			// pow() is slow so just multiply out
+            double xComp = (i + 1 - (FILTERSIZE+1)/2) * (i + 1 - (FILTERSIZE+1)/2);
+            double yComp = (j + 1 - (FILTERSIZE+1)/2) * (j + 1 - (FILTERSIZE+1)/2);
+
+            //calculate the value at each index of the Kernel
+            double filterVal = exp(-(xComp + yComp) / (2 * stDevSq));
+            filterVal = scaleFac * filterVal;
+
+            //populate Kernel
+            outFilter[i][j] = filterVal;
+
+	/*
+>>>>>>> Stashed changes
             if (i==0 && j==0)
             {
                 scaleVal = outFilter[0][0];
@@ -32,11 +57,17 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 
             //normalize Kernel
             outFilter[i][j] = outFilter[i][j] / scaleVal;
+<<<<<<< Updated upstream
+=======
+	*/			
+
+>>>>>>> Stashed changes
         }
     }
 }
 
 
+<<<<<<< Updated upstream
 
 
 
@@ -49,6 +80,8 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 
 
 
+=======
+>>>>>>> Stashed changes
 // convert the image to grayscale
 __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height) {
    int idx, grayidx;
@@ -164,11 +197,19 @@ __global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, i
 }
 
 
+<<<<<<< Updated upstream
 void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
     // find center position of kernel (half of kernel size)
     int filterHalf = filterSize / 2;
     
     
+=======
+void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
+
+    // find center position of kernel (half of kernel size)
+    int filterHalf = filterSize / 2;
+    
+>>>>>>> Stashed changes
     // iterate over rows and coluns of the image
     for(int row=0; row < height; ++row)              // rows
     {
@@ -176,7 +217,11 @@ void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE]
         {
             int start_col = col - filterHalf;
             int start_row = row - filterHalf;
+<<<<<<< Updated upstream
             int pixelvalue = 0; 
+=======
+            float pixelvalue = 0; 
+>>>>>>> Stashed changes
 
             // then for each pixel iterate through the filter
             for(int j=0; j < filterSize; ++j)     // filter rows
@@ -190,12 +235,17 @@ void Conv2DSerial(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE]
                     }
                 }
             }
+<<<<<<< Updated upstream
             outImg[row*width+col] = (int)(pixelvalue);
+=======
+            outImg[row*width+col] = pixelvalue;
+>>>>>>> Stashed changes
         }
     }
 }
 
 void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int height, int width) {
+<<<<<<< Updated upstream
 
    int filterSize = (int)FILTERSIZE;
    int halfFilter = (int)filterSize/2;
@@ -213,6 +263,25 @@ void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int he
          {1,   2,  1}
    };
 
+=======
+
+   int filterSize = (int)FILTERSIZE;
+   int halfFilter = (int)filterSize/2;
+
+   // To detect horizontal lines, G_x. 
+   const int fmat_x[3][3] = {
+         {-1, 0, 1},
+         {-2, 0, 2},
+         {-1, 0, 1}
+   };
+   // To detect vertical lines, G_y 
+   const int fmat_y[3][3]  = {
+         {-1, -2, -1},
+         {0,   0,  0},
+         {1,   2,  1}
+   };
+
+>>>>>>> Stashed changes
     // iterate over rows and coluns of the image
     for(int row=0; row < height; ++row)              // rows
     {

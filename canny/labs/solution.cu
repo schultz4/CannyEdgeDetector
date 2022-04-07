@@ -14,6 +14,7 @@
     }                                                                     \
   } while (0)
 
+<<<<<<< Updated upstream
 
 void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
 {
@@ -46,6 +47,8 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
     }
 }
 
+=======
+>>>>>>> Stashed changes
 int main(int argc, char *argv[])
 {
 
@@ -77,6 +80,11 @@ int main(int argc, char *argv[])
 	float *deviceGradientImageData;
 	float *deviceSobelImageData;
 	
+	// Filtering parameters
+	float *BlurImageData;
+	float *SobelImageData;
+	float *GradientImageData;
+
 	// Otsu's Method parameters
 	unsigned int *histogram;
 
@@ -107,7 +115,7 @@ int main(int argc, char *argv[])
 	hostInputImageData = wbImage_getData(inputImage);
 
 	// CHANGE THIS TO CHANGE OUTPUT IMAGE
-	hostGrayImageData = wbImage_getData(outputImage);
+	BlurImageData = wbImage_getData(outputImage);
 
 
 	////////////////////////////////
@@ -116,9 +124,15 @@ int main(int argc, char *argv[])
 
 
 	// Allocate memory on host
+	hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+	// Allocate memory for serial filtering
+	//BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory on host and set to 0
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
@@ -223,9 +237,14 @@ int main(int argc, char *argv[])
 	// Host Execution //
 	////////////////////
 
+	// Blur image using Gaussian Kernel
+	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
+
+	// Calculate gradient using Sobel Operators
+	//GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
-	Histogram_Sequential(hostGrayImageData, histogram, imageWidth, imageHeight);
+	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
@@ -253,6 +272,9 @@ int main(int argc, char *argv[])
 	printf("Image[900] = %f\n",hostGrayImageData[900]);
 	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
 	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
+	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
+	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
+	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
 	printf("Otsu's Threshold = %f\n", thresh);
 	printf("\n");
 
@@ -277,6 +299,9 @@ int main(int argc, char *argv[])
 	free(hostBlurImageData);
 	free(hostSobelImageData);
 	free(hostGradientImageData);
+	//free(BlurImageData);
+	free(SobelImageData);
+	free(GradientImageData);
 	free(histogram);
 
 	// Destroy images
