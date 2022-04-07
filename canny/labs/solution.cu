@@ -99,7 +99,14 @@ int main(int argc, char *argv[])
 	// Allocate memory for serial filtering
 	//BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	NmsImageData      = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+	// Initialize memory for serial 
+	//memset(BlurImageData, 0, imageHeight*imageWidth*sizeof(float));
+	memset(SobelImageData, 0, imageHeight*imageWidth*sizeof(float));
+	memset(NmsImageData, 0, imageHeight*imageWidth*sizeof(float));
+	memset(GradientImageData, 0, imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory on host and set to 0
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
