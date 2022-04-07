@@ -1,0 +1,12 @@
+*.swp
+*.swn
+*.swo
+*~
+*.a
+*.so
+tags
+cscope.out
+
+canny/build_dir/CMakeCache.txt
+canny/build_dir/CMakeFiles/
+

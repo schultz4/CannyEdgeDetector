@@ -31,8 +31,9 @@
 ###module load cuda11/11.0
 
 ### set directory for job execution, replace the following path with your own path
-hw_path=~/ece569_hpc/proj/build_dir
+#hw_path=~/ece569_hpc/proj/build_dir
 ###akoglu/class/ece569/build_dir
+hw_path=${PWD}
 
 cd $hw_path
 ###

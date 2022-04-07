@@ -1,21 +1,10 @@
+#include <stdio.h>
 #include <wb.h>
-#include "filters.cu"
 #include "Otsus_Method.h"
+#include "filters.h"
 
-#define FILTERSIZE 3
-
-#define wbCheck(stmt)                                                     \
-  do {                                                                    \
-    cudaError_t err = stmt;                                               \
-    if (err != cudaSuccess) {                                             \
-      wbLog(ERROR, "Failed to run stmt ", #stmt);                         \
-      wbLog(ERROR, "Got CUDA error ...  ", cudaGetErrorString(err));      \
-      return -1;                                                          \
-    }                                                                     \
-  } while (0)
-
-int main(int argc, char *argv[])
-{
+// Also modify the main function to launch thekernel.
+int main(int argc, char *argv[]) {
 
 	//////////////////////////////
 	// Parameter Initialization //
@@ -38,13 +27,6 @@ int main(int argc, char *argv[])
 	float *hostGradientImageData;
 	float *hostSobelImageData;
 
-	// Device side parameters
-	float *deviceInputImageData;
-	float *deviceGrayImageData;
-	float *deviceBlurImageData;
-	float *deviceGradientImageData;
-	float *deviceSobelImageData;
-	
 	// Filtering parameters
 	float *BlurImageData;
 	float *SobelImageData;
@@ -118,86 +100,6 @@ int main(int argc, char *argv[])
 	int filterSize = (int)FILTERSIZE;
 
 
-	//////////////////////////////////
-	// Device Memory Initialization //
-	//////////////////////////////////
-
-
-	// Start total program timer
-	wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
-
-	// Start memory allocation timer
-	wbTime_start(GPU, "Doing GPU memory allocation");
-
-	// Allocate memory on device
-	cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float));
-	cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
-	cudaMalloc((void **)&deviceSobelImageData, imageWidth*imageHeight*sizeof(int));
-	cudaMalloc((void **)&deviceGradientImageData, imageWidth*imageHeight*sizeof(int));
-
-	// Stop memory allocation timer
-	wbTime_stop(GPU, "Doing GPU memory allocation");
-
-	// Start memory copy timer
-	wbTime_start(Copy, "Copying data to the GPU");
-
-	// Copy input image from host to device
-	cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels*imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
-
-
-	///////////////////
-	// GPU Execution //
-	///////////////////
-
-
-	// Start computation timer
-	wbTime_start(Compute, "Doing the computation on the GPU");
-
-	// Number of threads/block is 16
-	int blocksize = 16;
-
-	// Initialize x and y block dimension to blocksize
-	dim3 BlockDim(blocksize,blocksize);
-
-	// Set x and y grid dimension 
-	dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
-
-	// Call RGB to grayscale conversion kernel
-	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
-
-	// Call image burring kernel
-	//Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
-
-	// Call sobel filtering kernel
-	//GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
-
-	// Stop computation timer
-	wbTime_stop(Compute, "Doing the computation on the GPU");
-
-
-	////////////////////
-	// Device Results //
-	////////////////////
-
-
-	// Start device memory copy timer
-	wbTime_start(Copy, "Copying data from the GPU");
-
-	// Copy data from device back to host
-	cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyHostToDevice);
-	//cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
-	//cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice); 
-
-	// Stop memory timer
-	wbTime_stop(Copy, "Copying data from the GPU");
-
-	// Stop total program timer
-	wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
-
-	
 	////////////////////
 	// Host Execution //
 	////////////////////
@@ -253,13 +155,6 @@ int main(int argc, char *argv[])
 	//////////////
 
 
-	// Destory all cuda memory
-	cudaFree(deviceInputImageData);
-	cudaFree(deviceGrayImageData);
-	cudaFree(deviceBlurImageData);
-	cudaFree(deviceSobelImageData);
-	cudaFree(deviceGradientImageData);
-
 	// Destroy all host memory
 	free(hostBlurImageData);
 	free(hostSobelImageData);
@@ -275,3 +170,4 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+
