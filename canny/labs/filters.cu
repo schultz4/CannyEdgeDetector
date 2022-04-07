@@ -188,7 +188,7 @@ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERS
     }
 }
 
-void GradientSobelSerial(int *inImg, float *sobelImg, float *gradientImg, int height, int width) {
+void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width) {
 
    int filterSize = (int)FILTERSIZE;
    int halfFilter = (int)filterSize/2;

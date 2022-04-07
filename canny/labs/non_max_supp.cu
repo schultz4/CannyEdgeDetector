@@ -23,15 +23,6 @@ float getPoint(float *img, int rIdx, int cIdx, int height, int width)
 
 void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
 {
-  //Mat             sMatGradPad;
-  //vector<Point2i> vecIndex;
-  //int             s32Pad      = ks32NonMaxFiltLen >> 1;
-  //Point pOne, pTwo, pThree, pFour;
-  //vector<uchar> vecPixel(ks32NonMaxFiltLen);
-
-  //copyMakeBorder(sMatGrad, sMatGradPad, s32Pad, s32Pad, s32Pad, s32Pad, BORDER_REPLICATE);
-  //sMatOutputGrad.create(Size(sMatGrad.cols, sMatGrad.rows), CV_8UC1);
-
   for(int i = 0; i < width; ++i)
   {
     for(int j = 0; j < height; ++j)
@@ -54,28 +45,24 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       switch( fAngle ) 
       {
         case 0:
-  //        pOne   = (Point(0, 1)); pTwo   = (Point(0, 2)); pThree = (Point(-1, 0)); pFour  = (Point(-2, 0));
           p1 = getPoint(inImg, i, j+i, height, width);
           p2 = getPoint(inImg, i, j+2, height, width);
           p3 = getPoint(inImg, i-1, j, height, width);
           p4 = getPoint(inImg, i-2, j, height, width);
           break;
         case 45:
-  //        pOne   = (Point(-1, -1)); pTwo   = (Point(-2, -2)); pThree = (Point(1, 1)); pFour  = (Point(2, 2));
           p1 = getPoint(inImg, i-1, j-1, height, width);
           p2 = getPoint(inImg, i-2, j-2, height, width);
           p3 = getPoint(inImg, i+1, j+1, height, width);
           p4 = getPoint(inImg, i+2, j+2, height, width);
           break;
         case 90:
-  //        pOne   = (Point(-1, 0)); pTwo   = (Point(-2, 0)); pThree = (Point(1, 0)); pFour  = (Point(2, 0));
           p1 = getPoint(inImg, i-1, j, height, width);
           p2 = getPoint(inImg, i-2, j, height, width);
           p3 = getPoint(inImg, i+1, j, height, width);
           p4 = getPoint(inImg, i+2, j, height, width);
           break;
         case 135:
-  //        pOne   = (Point(-1, 1)); pTwo   = (Point(-2, 2)); pThree = (Point(1, -1)); pFour  = (Point(2, -2));
           p1 = getPoint(inImg, i-1, j+1, height, width);
           p2 = getPoint(inImg, i-2, j+2, height, width);
           p3 = getPoint(inImg, i+1, j-1, height, width);
@@ -89,45 +76,5 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       *(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
     }
   }
-  //for (int i = s32Pad; i < sMatGradPad.rows - s32Pad; i++){
-  //  for (int j = s32Pad; j < sMatGradPad.cols - s32Pad; j++){
-  //    int ii = i - s32Pad;
-  //    int jj = j - s32Pad;
-  //    unsigned short u16Angle = sMatEdgeOrientation.at<unsigned short>(ii, jj);
-  //    switch ( u16Angle ) {
-  //      case 0: 
-  //        pOne   = (Point(0, 1)); pTwo   = (Point(0, 2)); pThree = (Point(-1, 0)); pFour  = (Point(-2, 0));
-  //        break;
-  //      case 45:  
-  //        pOne   = (Point(-1, -1)); pTwo   = (Point(-2, -2)); pThree = (Point(1, 1)); pFour  = (Point(2, 2));
-  //        break;
-  //      case 90:  
-  //        pOne   = (Point(-1, 0)); pTwo   = (Point(-2, 0)); pThree = (Point(1, 0)); pFour  = (Point(2, 0));
-  //        break;
-  //      case 135: 
-  //        pOne   = (Point(-1, 1)); pTwo   = (Point(-2, 2)); pThree = (Point(1, -1)); pFour  = (Point(2, -2));
-  //        break;
-  //      default:  
-  //        break;
-  //    }       /* -----  end switch  ----- */
-
-  //    //four neighboring pixels
-  //    vecPixel.at(0) = sMatGradPad.at<uchar>(i + pTwo.x   , j + pTwo.y);
-  //    vecPixel.at(1) = sMatGradPad.at<uchar>(i + pOne.x   , j + pOne.y);
-  //    vecPixel.at(2) = sMatGradPad.at<uchar>(i , j);
-  //    vecPixel.at(3) = sMatGradPad.at<uchar>(i + pThree.x , j + pThree.y);
-  //    vecPixel.at(4) = sMatGradPad.at<uchar>(i + pFour.x  , j + pFour.y);
-
-  //    vector<uchar>::iterator itr = max_element(vecPixel.begin(), vecPixel.end());
-  //    int s32Index = itr - vecPixel.begin();
-  //    // Index of the current pixel in stored at index=2
-  //    if ( 2 != s32Index ) {
-  //      sMatOutputGrad.at<uchar>(ii, jj) = 0;
-  //    } else {
-  //      sMatOutputGrad.at<uchar>(ii, jj) = sMatGradPad.at<uchar>(i, j);
-  //    }
-
-  //  }
-  //}
 }
 
