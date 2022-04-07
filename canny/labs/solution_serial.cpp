@@ -5,104 +5,169 @@
 
 // Also modify the main function to launch thekernel.
 int main(int argc, char *argv[]) {
-  printf("Canny Serial Solution\n");
 
-  wbArg_t args;
-  int imageChannels;
-  int imageWidth;
-  int imageHeight;
-  char *inputImageFile;
-  wbImage_t inputImage;
-  //wbImage_t outputImage;
-
-  float *hostInputImageData;
-  int *hostGrayImageData;
-  int *hostBlurImageData;
-  float *hostGradientImageData;
-  float *hostSobelImageData;
-
-  unsigned int *histogram;
-  histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
-
-  args = wbArg_read(argc, argv); /* parse the input arguments */
-
-  inputImageFile = wbArg_getInputFile(args, 0);
-
-  inputImage = wbImport(inputImageFile);
-
-  imageWidth  = wbImage_getWidth(inputImage);
-  imageHeight = wbImage_getHeight(inputImage);
-  // For this lab the value is always 3
-  imageChannels = wbImage_getChannels(inputImage);
-
-  // Since the image is monochromatic, it only contains one channel
-  // set up the images
-  //outputImage = wbImage_new(imageWidth, imageHeight, 1);
-
-  hostInputImageData    = wbImage_getData(inputImage);
-  //hostOutputImageData = wbImage_getData(outputImage);
-  hostGrayImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-  hostBlurImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-  hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-  hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-
-  //hostOutputImageData = (int *)malloc(imageHeight*imageWidth*sizeof(int));
+	//////////////////////////////
+	// Parameter Initialization //
+	//////////////////////////////
 
 
+	// Image parameters for wbLib
+	wbArg_t args;
+	int imageChannels;
+	int imageWidth;
+	int imageHeight;
+	char *inputImageFile;
+	wbImage_t inputImage;
+	wbImage_t outputImage;
 
-  ///////////////////////////////////////////////////////////
-  // test the serial implementation with the grayscale image
-  ///////////////////////////////////////////////////////////
-  wbTime_start(Compute, "Doing Computation (memory + compute)");
+	// Host side parameters
+	float *hostInputImageData;
+	float *hostGrayImageData;
+	float *hostBlurImageData;
+	float *hostGradientImageData;
+	float *hostSobelImageData;
 
-  double filter[FILTERSIZE][FILTERSIZE];
-  populate_blur_filter(filter);
-  int filterSize = (int)FILTERSIZE;
+	// Filtering parameters
+	float *BlurImageData;
+	float *SobelImageData;
+	float *GradientImageData;
 
-  int *BlurImageData;
-  float *SobelImageData;
-  float *GradientImageData;
-  BlurImageData     = (int *)malloc(imageHeight*imageWidth*sizeof(int));
-  SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-  GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	// Otsu's Method parameters
+	unsigned int *histogram;
 
-  Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
-  GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
-  
-  Histogram_Sequential(hostGrayImageData, histogram, imageWidth, imageHeight); // Switched from device
 
-  double thresh = Otsu_Sequential(histogram);
+	////////////////////
+	// Image Handling //
+	////////////////////
 
-  wbTime_stop(Compute, "Doing the serial computation");
 
-  printf("\n");
-  printf("Width = %u\n",imageWidth);
-  printf("Height = %u\n",imageHeight);
-  printf("Histogram[0] = %u\n",histogram[0]);
-  printf("Histogram[1] = %u\n",histogram[1]);
-  printf("Histogram[20] = %u\n",histogram[20]);
-  printf("Histogram[45] = %u\n",histogram[45]);
-  printf("Histogram[56] = %u\n",histogram[56]);
-  printf("Image[0] = %f\n",hostGrayImageData[0]);
-  printf("Image[1] = %f\n",hostGrayImageData[1]);
-  printf("Image[20] = %f\n",hostGrayImageData[20]);
-  printf("Otsu's Threshold = %f\n", thresh);
-  printf("\n");
+	// Parse the input arguments
+	args = wbArg_read(argc, argv);
 
-  std::cout << "Finished with Serial" << std::endl;
-  //////////////////////////////////////////////////////////
-  // end serial implementation
-  //////////////////////////////////////////////////////////
-  
-  //char *oFile = wbArg_getOutputFile(args);
-  //wbExport(oFile, hostGrayImageData, imageWidth, imageHeight);
-  //wbExport(oFile, outputImage);
+	// Read input file
+	inputImageFile = wbArg_getInputFile(args, 0);
 
-  //cudaFree(deviceOutputImageData);
+	// Import input image 
+	inputImage = wbImport(inputImageFile);
 
-  //wbImage_delete(outputImage);
-  wbImage_delete(inputImage);
+	// Scrape info from input image
+	imageWidth  = wbImage_getWidth(inputImage);
+	imageHeight = wbImage_getHeight(inputImage);
+	imageChannels = wbImage_getChannels(inputImage);
+	
+	// Define new output image
+	outputImage = wbImage_new(imageWidth, imageHeight, 1);
 
-  return 0;
+	// Define output image data
+	hostInputImageData = wbImage_getData(inputImage);
+
+	// CHANGE THIS TO CHANGE OUTPUT IMAGE
+	BlurImageData = wbImage_getData(outputImage);
+
+
+	////////////////////////////////
+	// Host Memory Initialization //
+	////////////////////////////////
+
+
+	// Allocate memory on host
+	hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+	// Allocate memory for serial filtering
+	//BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+
+	// Allocate memory on host and set to 0
+	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
+
+
+	/////////////////////////
+	// Image Preprocessing //
+	/////////////////////////
+
+
+	// Create filter skeleton
+	double filter[FILTERSIZE][FILTERSIZE];
+
+	// Fill the gaussian filter
+	populate_blur_filter(filter);
+
+	// ?????
+	int filterSize = (int)FILTERSIZE;
+
+
+	////////////////////
+	// Host Execution //
+	////////////////////
+
+	// Blur image using Gaussian Kernel
+	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
+
+	// Calculate gradient using Sobel Operators
+	//GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+
+	// Calculate histogram of blurred image
+	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
+
+	// Calculate threshold using Otsu's Method
+	double thresh = Otsu_Sequential(histogram);
+
+
+	////////////////////
+	// Debugging Info //
+	////////////////////
+
+
+	// Print info
+	printf("\n");
+	printf("Width = %u\n",imageWidth);
+	printf("Height = %u\n",imageHeight);
+	printf("InputImage[0] = %f\n",hostInputImageData[0]);
+	printf("Histogram[0] = %u\n",histogram[0]);
+	printf("Histogram[1] = %u\n",histogram[1]);
+	printf("Histogram[20] = %u\n",histogram[20]);
+	printf("Histogram[45] = %u\n",histogram[45]);
+	printf("Histogram[56] = %u\n",histogram[56]);
+	printf("Image[0] = %f\n",hostGrayImageData[0]);
+	printf("Image[1] = %f\n",hostGrayImageData[1]);
+	printf("Image[36] = %f\n",hostGrayImageData[36]);
+	printf("Image[400] = %f\n",hostGrayImageData[400]);
+	printf("Image[900] = %f\n",hostGrayImageData[900]);
+	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
+	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
+	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
+	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
+	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
+	printf("Otsu's Threshold = %f\n", thresh);
+	printf("\n");
+
+	// Export image
+	char *oFile = wbArg_getOutputFile(args);
+	wbExport(oFile, outputImage);
+
+
+	//////////////
+	// Clean Up //
+	//////////////
+
+
+	// Destroy all host memory
+	free(hostBlurImageData);
+	free(hostSobelImageData);
+	free(hostGradientImageData);
+	//free(BlurImageData);
+	free(SobelImageData);
+	free(GradientImageData);
+	free(histogram);
+
+	// Destroy images
+	wbImage_delete(outputImage);
+	wbImage_delete(inputImage);
+
+	return 0;
 }
 
