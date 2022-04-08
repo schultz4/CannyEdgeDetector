@@ -53,8 +53,12 @@ count=0
 for i in ${PATHS[@]}
 do
    file=output$((count)).txt
-   ./Canny_Solution -e $i/output.pbm -i $i/input.ppm -t image > CannyImage_output/$file
- count=$((count+1))
+   imgOutfile=outputImg$((count)).ppm
+   #./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -e $i/output.pbm -i $i/input.ppm -t image > ${hw_path}/CannyImage_output/gpu_$file
+   ./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image > ${hw_path}/CannyImage_output/gpu_$file
+   #./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -e $i/output.pbm -i $i/input.ppm -t image > ${hw_path}/CannyImage_output/serial_$file
+   ./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image > ${hw_path}/CannyImage_output/serial_$file
+   count=$((count+1))
 done
 
 
