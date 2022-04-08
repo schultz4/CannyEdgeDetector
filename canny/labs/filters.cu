@@ -63,6 +63,7 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
 }
 
 
+
 // the gaussian blur is just a conv2d with a filter
 __global__ void Conv2D(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
    int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -188,60 +189,60 @@ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERS
     }
 }
 
-void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width) {
 
-   int filterSize = (int)FILTERSIZE;
-   int halfFilter = (int)filterSize/2;
+void GradientSobelSerial(float *inImg, float *mag, float *phase, int height, int width)
+{
 
-   // To detect horizontal lines, G_x. 
-   const int fmat_x[3][3] = {
-         {-1, 0, 1},
-         {-2, 0, 2},
-         {-1, 0, 1}
-   };
-   // To detect vertical lines, G_y 
-   const int fmat_y[3][3]  = {
-         {-1, -2, -1},
-         {0,   0,  0},
-         {1,   2,  1}
-   };
+	int filterSize = (int)FILTERSIZE;
+	int halfFilter = (int)(filterSize)/2;
+	
+	// To detect horizontal lines, G_x. 
+	const int fmat_x[3][3] = {
+		{-1, 0, 1},
+		{-2, 0, 2},
+		{-1, 0, 1}
+	};
+	// To detect vertical lines, G_y 
+	const int fmat_y[3][3]  = {
+		{-1, -2, -1},
+		{0,   0,  0},
+		{1,   2,  1}
+	};
 
-    // iterate over rows and coluns of the image
-    for(int row=0; row < height; ++row)              // rows
-    {
-        for(int col=0; col < width; ++col)          // columns
-        {
-           double sumx = 0;
-           double sumy = 0;
+	// iterate over rows and columns of the image
+	for(int row=0; row < height; ++row)              // rows
+	{
+		for(int col=0; col < width; ++col)          // columns
+		{
 
-           int start_col = col - halfFilter;
-           int start_row = row - halfFilter;
+			double sumx = 0;
+			double sumy = 0;
 
-           // now do the filtering
-           for (int j = 0; j < filterSize; ++j) {
-              for (int k = 0; k < filterSize; ++k) {
-                 int cur_row = start_row + j;
-                 int cur_col = start_col + k;
+			int start_col = col - halfFilter;
+			int start_row = row - halfFilter;
 
-                 // only count the ones that are inside the boundaries
-                 if (cur_row >=0 && cur_row < height) {
-                    sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k];
-                 }
-                 if ( cur_col >= 0 && cur_col < width) {
-                    sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
-                 }
-              }
-           }
-           int value = sqrt(sumx* sumx + sumy*sumy);
-           if (value > 255) {
-              value = 255;
-           }
-           if (value < 0) {
-              value = 0;
-           }
-           sobelImg[row*width + col] = value; // output of the sobel filt at this index
-           gradientImg[row*width+col] = atan(sumx/sumy) * 180/M_PI; // graient at pixel
+			// now do the filtering
+			for (int j = 0; j < filterSize; ++j)
+			{
+				for (int k = 0; k < filterSize; ++k)
+				{
 
-        }
-    }
+					int cur_row = start_row + j;
+					int cur_col = start_col + k;
+
+					// only count the ones that are inside the boundaries
+					if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width)
+					{
+						sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k] * 255;
+						sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k] * 255;
+					}
+
+				}
+			}
+
+			mag[row*width + col] = sqrt(sumx * sumx + sumy * sumy); // output of the sobel filt at this index
+			phase[row*width+col] = atan(sumx/sumy) * 180/M_PI; // gradient at pixel
+
+		}
+	}
 }
