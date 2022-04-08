@@ -52,8 +52,9 @@ PATHS[9]=$hw_path/CannyImage/Dataset/9;
 memcheck=""
 #memcheck="valgrind --tool=memcheck "
 
+## Uncomment vars below and run for memory report
 cuda_memcheck=""
-#cuda_memcheck="cuda_memcheck "
+#cuda_memcheck="cuda-memcheck "
 
 count=0
 for i in ${PATHS[@]}
