@@ -9,4 +9,9 @@ cscope.out
 
 canny/build_dir/CMakeCache.txt
 canny/build_dir/CMakeFiles/
-
+canny/build_dir/Makefile
+canny/build_dir/cmake_install.cmake
+canny/build_dir/CannyImage_output/*output*
+canny/build_dir/CannyImage_Serial
+canny/build_dir/CannyImage_Solution
+canny/build_dir/compile_commands.json
