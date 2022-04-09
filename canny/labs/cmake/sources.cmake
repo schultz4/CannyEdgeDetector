@@ -15,6 +15,15 @@ add_lab("CannyImage")
 ################################################################################
 
 ################################################################################
+# Edge Connection
+################################################################################
+set( target_edgeconnection edgeconnection )
+set( sources_edgeconnection
+  ${PROJECT_SOURCE_DIR}/Edge_Connection.cu
+)
+cuda_add_library( ${target_edgeconnection} ${sources_edgeconnection} )
+
+################################################################################
 # Filters
 ################################################################################
 set( target_filters filters )
@@ -56,6 +65,7 @@ cuda_add_library( ${target_nms} ${sources_nms} )
 set( target_canny_serial CannyImage_Serial )
 
 set( canny_serial_libs
+  ${target_edgeconnection}
   ${target_filters}
   ${target_otsu}
   ${target_nms}
@@ -76,6 +86,7 @@ target_link_libraries( ${target_canny_serial} ${canny_serial_libs} )
 set(target_canny_gpu CannyImage_Solution )
 
 set( canny_gpu_libs
+  ${target_edgeconnection}
   ${target_filters}
   ${target_otsu}
   ${target_nms}

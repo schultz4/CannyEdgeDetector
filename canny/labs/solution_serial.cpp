@@ -89,13 +89,15 @@ int main(int argc, char *argv[]) {
 	//hostedgeImage		  = (float*)malloc(imageHeight*imageWidth*sizeof(float));
 
 
+
+
 	// Allocate memory for serial filtering
 	BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
   NmsImageData      = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	//weakEdgeImage     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	edgeImage 		  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	//edgeImage 		  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 
 	// Allocate memory on host and set to 0
