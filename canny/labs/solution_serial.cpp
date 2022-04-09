@@ -25,18 +25,13 @@ int main(int argc, char *argv[]) {
 	wbImage_t inputImage;
 	wbImage_t outputImage;
 
-	// Host side parameters
-	float *hostInputImageData;
-	float *hostGrayImageData;
-	float *hostBlurImageData;
-	float *hostGradientImageData;
-	float *hostSobelImageData;
-	float *hostweakEdgeImage;
-	float *hostedgeImage;
+  float *hostInputImageData;
 
 	// Filtering parameters
 	float *BlurImageData;
-	float *SobelImageData;
+  float *GrayImageData;
+	float *GradMagData;
+	float *GradPhaseData;
   float *NmsImageData;
 
 	// Otsu's Method parameters
@@ -82,23 +77,13 @@ int main(int argc, char *argv[]) {
 
 
 	// Allocate memory on host
-	hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	//hostweakEdgeImage 	  = (float*)malloc(imageHeight*imageWidth*sizeof(float));
-	//hostedgeImage		  = (float*)malloc(imageHeight*imageWidth*sizeof(float));
-
-
-
-
   GrayImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	NmsImageData      = (float *)calloc(imageHeight*imageWidth, sizeof(float));
-	//weakEdgeImage     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	//edgeImage 		  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	weakEdgeImage     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	edgeImage         = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
   // Initialize memory for the output image
   // Note - input image is 3 channels. Other phases only have 1 channel
@@ -185,13 +170,13 @@ int main(int argc, char *argv[]) {
 	printf("Histogram[20] = %u\n",histogram[20]);
 	printf("Histogram[45] = %u\n",histogram[45]);
 	printf("Histogram[56] = %u\n",histogram[56]);
-	printf("Image[0] = %f\n",hostGrayImageData[0]);
-	printf("Image[1] = %f\n",hostGrayImageData[1]);
-	printf("Image[36] = %f\n",hostGrayImageData[36]);
-	printf("Image[400] = %f\n",hostGrayImageData[400]);
-	printf("Image[900] = %f\n",hostGrayImageData[900]);
-	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
-	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
+	printf("Image[0] = %f\n",GrayImageData[0]);
+	printf("Image[1] = %f\n",GrayImageData[1]);
+	printf("Image[36] = %f\n",GrayImageData[36]);
+	printf("Image[400] = %f\n",GrayImageData[400]);
+	printf("Image[900] = %f\n",GrayImageData[900]);
+	printf("Image[1405] = %f\n",GrayImageData[1405]);
+	printf("Image[85000] = %f\n",GrayImageData[85000]);
 	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
 	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
 	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
