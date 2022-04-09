@@ -3,6 +3,7 @@
 #include "Otsus_Method.h"
 #include "filters.h"
 #include "non_max_supp.h"
+#include "Edge_Connection.h"
 
 #define FILTERSIZE 3
 
@@ -39,6 +40,8 @@ int main(int argc, char *argv[])
 	float *hostBlurImageData;
 	float *hostGradMagData;
 	float *hostGradPhaseData;
+	//float *hostEdgeImage;
+	//float *hostWeakEdgeImage;
 
 	// Device side parameters
 	float *deviceInputImageData;
@@ -46,6 +49,8 @@ int main(int argc, char *argv[])
 	float *deviceBlurImageData;
 	float *deviceGradMagData;
 	float *deviceGradPhaseData;
+	//float *deviceEdgeImage;
+	//float *deviceWeakEdgeImage;
 	
 	// Filtering parameters
 	float *BlurImageData;
@@ -139,6 +144,8 @@ int main(int argc, char *argv[])
 	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
 	cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(int));
 	cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(int));
+	//cudaMalloc((void **)&deviceEdgeImage, imageWidth*imageHeight*sizeof(int));
+	//cudaMalloc((void **)&deviceWeakEdgeImage, imageWidth*imageHeight*sizeof(int))
 
 	// Stop memory allocation timer
 	wbTime_stop(GPU, "Doing GPU memory allocation");
@@ -221,6 +228,8 @@ int main(int argc, char *argv[])
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
 
+	
+
 
 	////////////////////
 	// Debugging Info //
@@ -275,6 +284,8 @@ int main(int argc, char *argv[])
 	cudaFree(deviceBlurImageData);
 	cudaFree(deviceGradMagData);
 	cudaFree(deviceGradPhaseData);
+	//cudaFree(deviceEdgeImage);
+	//cudaFree(deviceWeakEdgeImage);
 
 	// Destroy all host memory
 	free(hostBlurImageData);
@@ -285,6 +296,8 @@ int main(int argc, char *argv[])
 	free(GradPhaseData);
 	free(NmsImageData);
 	free(histogram);
+	//free(EdgeImage);
+	//free(WeakEdgeImage);
 
 	// Destroy images
 	wbImage_delete(outputImage);
