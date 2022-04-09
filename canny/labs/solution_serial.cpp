@@ -25,14 +25,14 @@ int main(int argc, char *argv[]) {
 	float *hostInputImageData;
 	float *hostGrayImageData;
 	float *hostBlurImageData;
-	float *hostGradientImageData;
-	float *hostSobelImageData;
+	float *hostGradMagData;
+	float *hostGradPhaseData;
 
 	// Filtering parameters
 	float *BlurImageData;
-	float *SobelImageData;
-  float *NmsImageData;
-	float *GradientImageData;
+	float *GradMagData;
+	float *GradPhaseData;
+	float *NmsImageData;
 
 	// Otsu's Method parameters
 	unsigned int *histogram;
@@ -75,16 +75,16 @@ int main(int argc, char *argv[]) {
 	// Allocate memory on host
 	hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostSobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostGradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostGradMagData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostGradPhaseData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
-	// Allocate memory for serial filtering
-	BlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	SobelImageData    = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-  NmsImageData      = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	GradientImageData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	// Allocate memory for serial filtering and initialize to 0
+	//BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
-	// Allocate memory on host and set to 0
+	// Allocate memory on host and initialize to 0
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
 
 
@@ -111,10 +111,10 @@ int main(int argc, char *argv[]) {
 	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	GradientSobelSerial(BlurImageData, SobelImageData, GradientImageData, imageHeight, imageWidth);
+	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
 
-  // Supress non-local maximums along edges
-  nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
+  	// Suppress non-maximum pixels along gradient
+  	//nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
@@ -148,6 +148,15 @@ int main(int argc, char *argv[]) {
 	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
 	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
 	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
+	printf("Blurred Image[0] = %f\n",BlurImageData[0]*255);
+	printf("Blurred [25] = %f\n", BlurImageData[25]*255);
+	printf("Blurred Image[290] = %f\n",BlurImageData[290]*255);
+	printf("Gradient magnitude at [0] = %f\n",GradMagData[0]);
+	printf("Gradient magnitude at [20] = %f\n",GradMagData[20]);
+	printf("Gradient magnitude at [9000] = %f\n",GradMagData[9000]);
+	printf("Gradient phase at [0] = %f\n",GradPhaseData[0]);
+	printf("Gradient phase at [20] = %f\n",GradPhaseData[20]);
+	printf("Gradient phase at [290] = %f\n",GradPhaseData[290]);
 	printf("Otsu's Threshold = %f\n", thresh);
 	printf("\n");
 
@@ -163,11 +172,12 @@ int main(int argc, char *argv[]) {
 
 	// Destroy all host memory
 	free(hostBlurImageData);
-	free(hostSobelImageData);
-	free(hostGradientImageData);
+	free(hostGradMagData);
+	free(hostGradPhaseData);
 	//free(BlurImageData);
-	free(SobelImageData);
-	free(GradientImageData);
+	free(GradMagData);
+	free(GradPhaseData);
+	free(NmsImageData);
 	free(histogram);
 
 	// Destroy images
@@ -176,4 +186,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-
