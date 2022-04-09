@@ -48,13 +48,22 @@ PATHS[7]=$hw_path/CannyImage/Dataset/7;
 PATHS[8]=$hw_path/CannyImage/Dataset/8;
 PATHS[9]=$hw_path/CannyImage/Dataset/9;
 
+## Uncomment vars below and run for memory report
+memcheck=""
+#memcheck="valgrind --tool=memcheck --leak-check=full "
+
+## Uncomment vars below and run for memory report
+cuda_memcheck=""
+#cuda_memcheck="cuda-memcheck "
 
 count=0
 for i in ${PATHS[@]}
 do
    file=output$((count)).txt
-   ./Canny_Solution -e $i/output.pbm -i $i/input.ppm -t image > CannyImage_output/$file
- count=$((count+1))
+   imgOutFile=outputImg$((count)).ppm
+   ${cuda_memcheck} ./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file
+   ${memcheck} ./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
+   count=$((count+1))
 done
 
 
