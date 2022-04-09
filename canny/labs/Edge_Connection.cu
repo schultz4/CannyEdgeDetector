@@ -73,17 +73,17 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
 
 
 __global__ void thresh_detection_global_kernel(float *image, float *weak_img, float *edge_img, double thresh_high,
-                                        int width, int height,) {
+                                        int width, int height) {
 
     // Set lower threshold from high threshold
     double thresh_low = thresh_high - 0.2;
 
     // Set up thread ID
-    int Col = threadIdx.x + blockIdx.x * blockDim.x
-    int Row = threadIdx.y + blockIdx.y * blockDim.y
+    int Col = threadIdx.x + blockIdx.x * blockDim.x;
+    int Row = threadIdx.y + blockIdx.y * blockDim.y;
 
     // Go through all of the pixels and mark them as edge, non edge, or weak edge
-    if ((Col < width) && (Row < heigth)) {
+    if ((Col < width) && (Row < height)) {
 
         // Edge pixels
         if (image[Row*width+Col] >= thresh_high){
@@ -110,9 +110,9 @@ __global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, 
     int edge_size = 1;
 
     // Set up thread ID
-    int Col = threadIdx.x + blockIdx.x * blockDim.x
-    int Row = threadIdx.y + blockIdx.y * blockDim.y
-    if ((Col < width) && (Row < heigth)) {
+    int Col = threadIdx.x + blockIdx.x * blockDim.x;
+    int Row = threadIdx.y + blockIdx.y * blockDim.y;
+    if ((Col < width) && (Row < height)) {
 
         // Find weak pixel and determine if it is adjacent to edge pixel
         // Changed to add correct boundary

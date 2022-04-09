@@ -81,14 +81,8 @@ int main(int argc, char *argv[])
 	imageHeight = wbImage_getHeight(inputImage);
 	imageChannels = wbImage_getChannels(inputImage);
 	
-	// Define new output image
-	outputImage = wbImage_new(imageWidth, imageHeight, 1);
-
 	// Define output image data
 	hostInputImageData = wbImage_getData(inputImage);
-
-	// CHANGE THIS TO CHANGE OUTPUT IMAGE
-	BlurImageData = wbImage_getData(outputImage);
 
 
 	////////////////////////////////
@@ -103,7 +97,7 @@ int main(int argc, char *argv[])
 	hostGradPhaseData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory for serial filtering and initialize to 0
-	//BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
@@ -111,6 +105,12 @@ int main(int argc, char *argv[])
 	// Allocate memory on host and initialize to 0
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
 
+  // Initialize memory for the output image
+  // Note - input image is 3 channels. Other phases only have 1 channel
+  // float *outData = (float *)calloc(imageHeight*imageWidth*imageChannels,sizeof(float));
+  float *outData = (float *)calloc(imageHeight*imageWidth,sizeof(float));
+	outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
+  
 
 	/////////////////////////
 	// Image Preprocessing //
@@ -208,7 +208,6 @@ int main(int argc, char *argv[])
 	// Stop total program timer
 	wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
 
-	
 	////////////////////
 	// Host Execution //
 	////////////////////
@@ -219,8 +218,8 @@ int main(int argc, char *argv[])
 	// Calculate gradient using Sobel Operators
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
 
-  	// Suppress non-maximum pixels along gradient
-  	//nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
+  // Suppress non-maximum pixels along gradient
+  nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
@@ -228,8 +227,20 @@ int main(int argc, char *argv[])
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
 
-	
+  // Copy image data for output image (choose 1 - can only log one at a time for now
+  // For GPU execution
+  //memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
 
+  // For Host execution
+  //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
 
 	////////////////////
 	// Debugging Info //
