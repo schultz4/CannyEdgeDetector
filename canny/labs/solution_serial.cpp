@@ -23,12 +23,9 @@ int main(int argc, char *argv[]) {
 
 	// Host side parameters
 	float *hostInputImageData;
-	float *hostGrayImageData;
-	float *hostBlurImageData;
-	float *hostGradMagData;
-	float *hostGradPhaseData;
 
 	// Filtering parameters
+  float *GrayImageData;
 	float *BlurImageData;
 	float *GradMagData;
 	float *GradPhaseData;
@@ -57,34 +54,25 @@ int main(int argc, char *argv[]) {
 	imageHeight = wbImage_getHeight(inputImage);
 	imageChannels = wbImage_getChannels(inputImage);
 	
-	// Define new output image
-	outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
-
 	// Define output image data
 	hostInputImageData = wbImage_getData(inputImage);
-
-	// CHANGE THIS TO CHANGE OUTPUT IMAGE
-	BlurImageData = wbImage_getData(outputImage);
-
 
 	////////////////////////////////
 	// Host Memory Initialization //
 	////////////////////////////////
 
-
-	// Allocate memory on host
-	hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostGradMagData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-	hostGradPhaseData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
-
-	// Allocate memory for serial filtering and initialize to 0
-	//BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	// Allocate memory for serial filtering
+  GrayImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-	NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	NmsImageData      = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
-	// Allocate memory on host and initialize to 0
+  // Set output image for phase desired
+  // Note - input image is 3 channels. Other phases only have 1 channel
+  float *outData = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
+  
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
 
 
@@ -107,14 +95,17 @@ int main(int argc, char *argv[]) {
 	// Host Execution //
 	////////////////////
 
+  // GrayImageData Serial
+  ColorToGrayscaleSerial(hostInputImageData, GrayImageData, imageWidth, imageHeight);
+  
 	// Blur image using Gaussian Kernel
-	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
+	Conv2DSerial(GrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
 
-  	// Suppress non-maximum pixels along gradient
-  	//nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
+  // Suppress non-maximum pixels along gradient
+  nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
@@ -122,6 +113,11 @@ int main(int argc, char *argv[]) {
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
 
+  // Copy image data for output image (choose 1 - can only log one at a time for now
+  memcpy((void *)outData, (void *) GrayImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, SobelImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
 
 	////////////////////
 	// Debugging Info //
@@ -138,13 +134,13 @@ int main(int argc, char *argv[]) {
 	printf("Histogram[20] = %u\n",histogram[20]);
 	printf("Histogram[45] = %u\n",histogram[45]);
 	printf("Histogram[56] = %u\n",histogram[56]);
-	printf("Image[0] = %f\n",hostGrayImageData[0]);
-	printf("Image[1] = %f\n",hostGrayImageData[1]);
-	printf("Image[36] = %f\n",hostGrayImageData[36]);
-	printf("Image[400] = %f\n",hostGrayImageData[400]);
-	printf("Image[900] = %f\n",hostGrayImageData[900]);
-	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
-	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
+	printf("Image[0] = %f\n",GrayImageData[0]);
+	printf("Image[1] = %f\n",GrayImageData[1]);
+	printf("Image[36] = %f\n",GrayImageData[36]);
+	printf("Image[400] = %f\n",GrayImageData[400]);
+	printf("Image[900] = %f\n",GrayImageData[900]);
+	printf("Image[1405] = %f\n",GrayImageData[1405]);
+	printf("Image[85000] = %f\n",GrayImageData[85000]);
 	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
 	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
 	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
@@ -171,13 +167,11 @@ int main(int argc, char *argv[]) {
 
 
 	// Destroy all host memory
-	free(hostBlurImageData);
-	free(hostGradMagData);
-	free(hostGradPhaseData);
-	//free(BlurImageData);
 	free(GradMagData);
 	free(GradPhaseData);
 	free(NmsImageData);
+  free(GrayImageData);
+	free(BlurImageData);
 	free(histogram);
 
 	// Destroy images
