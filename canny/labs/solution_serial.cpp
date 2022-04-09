@@ -114,10 +114,10 @@ int main(int argc, char *argv[]) {
 	double thresh = Otsu_Sequential(histogram);
 
   // Copy image data for output image (choose 1 - can only log one at a time for now
-  memcpy(outData, GrayImageData, imageHeight*imageWidth*imageChannels*sizeof(float));
-  //memcpy(outData, BlurImageData, imageHeight*imageWidth*imageChannels*sizeof(float));
-  //memcpy(outData, SobelImageData, imageHeight*imageWidth*imageChannels*sizeof(float));
-  //memcpy(outData, NmsImageData, imageHeight*imageWidth*imageChannels*sizeof(float));
+  memcpy((void *)outData, (void *) GrayImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, SobelImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
 
 	////////////////////
 	// Debugging Info //

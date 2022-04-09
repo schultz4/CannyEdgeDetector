@@ -50,7 +50,7 @@ PATHS[9]=$hw_path/CannyImage/Dataset/9;
 
 ## Uncomment vars below and run for memory report
 memcheck=""
-#memcheck="valgrind --tool=memcheck "
+#memcheck="valgrind --tool=memcheck --leak-check=full "
 
 ## Uncomment vars below and run for memory report
 cuda_memcheck=""
@@ -60,9 +60,9 @@ count=0
 for i in ${PATHS[@]}
 do
    file=output$((count)).txt
-   imgOutfile=outputImg$((count)).ppm
-   ${cuda_memcheck}./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file
-   ${memcheck}./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
+   imgOutFile=outputImg$((count)).ppm
+   ${cuda_memcheck} ./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file
+   ${memcheck} ./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
    count=$((count+1))
 done
 
