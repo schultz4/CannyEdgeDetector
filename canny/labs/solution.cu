@@ -219,8 +219,8 @@ int main(int argc, char *argv[])
 	// Calculate gradient using Sobel Operators
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
 
-  	// Suppress non-maximum pixels along gradient
-  	//nms(SobelImageData, NmsImageData, GradientImageData, imageHeight, imageWidth);
+  // Suppress non-maximum pixels along gradient
+  nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
