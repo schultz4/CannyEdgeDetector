@@ -1,5 +1,5 @@
 #include "non_max_supp.h"
-#include <stdio.h>
+//#include <stdio.h>
 
 float maxSupp(float center, float p1, float p2, float p3=-1.0, float p4=-1.0)
 {
@@ -24,7 +24,7 @@ float getPoint(float *img, int cIdx, int rIdx, int height, int width)
 
 void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
 {
-  FILE *quantFile = fopen("quantNms.txt", "w");
+  //FILE *quantFile = fopen("quantNms.txt", "w");
 
   for(int j = 0; j < height; ++j)
   {
@@ -57,7 +57,7 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       else if ((angle > 22.5 && angle <= 67.5) || (angle < -112.5 && angle >= -157.5))
         fAngle = 45;
       
-      fprintf(quantFile, "%d,", fAngle);
+      //fprintf(quantFile, "%d,", fAngle);
       switch( fAngle ) 
       {
         case 0:
@@ -89,11 +89,11 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       }
 
       float center = getPoint(inImg, i, j, height, width);
-      //*(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
-      *(nmsImg + i + j*width) = maxSupp(center, p1, p2);
+      *(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
+      //*(nmsImg + i + j*width) = maxSupp(center, p1, p2);
     }
-    fprintf(quantFile, "\n");
+    //fprintf(quantFile, "\n");
   }
-  fclose(quantFile);
+  //fclose(quantFile);
 }
 

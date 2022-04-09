@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 	//weakEdgeImage     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	//edgeImage 		  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
-  // Set output image for phase desired
+  // Initialize memory for the output image
   // Note - input image is 3 channels. Other phases only have 1 channel
   float *outData = (float *)calloc(imageHeight*imageWidth,sizeof(float));
 	outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
@@ -130,17 +130,14 @@ int main(int argc, char *argv[]) {
   // GrayImageData Serial
   ColorToGrayscaleSerial(hostInputImageData, GrayImageData, imageWidth, imageHeight);
 
-  // TODO - Uncomment this
-	//// Blur image using Gaussian Kernel
+	// Blur image using Gaussian Kernel
 	Conv2DSerial(GrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
-	//GradientSobelPhaseOnlySerial(GrayImageData, GradPhaseData, imageHeight, imageWidth);
 
   // Suppress non-maximum pixels along gradient
   nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
-  //nms(GrayImageData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
@@ -148,14 +145,12 @@ int main(int argc, char *argv[]) {
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
 
-<<<<<<< HEAD
 	// Calculate strong, weak, and non edges using thresholds
 	threshold_detection_serial(BlurImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
 
 	// Connect edges by connecting weak edges to strong edges
 	edge_connection_serial(weakEdgeImage, edgeImage, imageWidth, imageHeight);
 
-=======
   // Copy image data for output image (choose 1 - can only log one at a time for now
   //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
@@ -163,18 +158,17 @@ int main(int argc, char *argv[]) {
   //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
   memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
 
-  FILE *testThin = fopen("nmsThin.txt", "w");
-  for(int x = 0; x < imageWidth; ++x)
-  {
-    for(int y = 0; y < imageHeight; ++y)
-    {
-      fprintf(testThin, "%f ", NmsImageData[x + y*imageWidth]);
-    }
-    fprintf(testThin, "\n");
-  }
-  fclose(testThin);
-  testThin = 0;
->>>>>>> Correct values for pixel selection and account for negative angles
+  //FILE *testThin = fopen("nmsThin.txt", "w");
+  //for(int x = 0; x < imageWidth; ++x)
+  //{
+  //  for(int y = 0; y < imageHeight; ++y)
+  //  {
+  //    fprintf(testThin, "%f ", NmsImageData[x + y*imageWidth]);
+  //  }
+  //  fprintf(testThin, "\n");
+  //}
+  //fclose(testThin);
+  //testThin = 0;
 
 	////////////////////
 	// Debugging Info //
@@ -225,7 +219,7 @@ int main(int argc, char *argv[]) {
 	free(edgeImage);
 
 	// Destroy images
-	wbImage_delete(outputImage);
+	wbImage_delete(outputImage); // Handles free of outData
 	wbImage_delete(inputImage);
 
 	return 0;
