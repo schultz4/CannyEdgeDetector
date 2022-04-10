@@ -9,7 +9,7 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
     //double scaleVal = 1;
     //double stDev = (double)FILTERSIZE/3;
 
-    double stDevSq = 0.8;
+    double stDevSq = 0.6;
     double pi = M_PI;
 	 double scaleFac = (1 / (2*pi*stDevSq));
 
@@ -246,8 +246,8 @@ void GradientSobelSerial(float *inImg, float *mag, float *phase, int height, int
 					// only count the ones that are inside the boundaries
 					if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width)
 					{
-						sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k] * 255;
-						sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k] * 255;
+						sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k];
+						sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
 					}
 
 				}

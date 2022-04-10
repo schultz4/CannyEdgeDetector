@@ -89,8 +89,8 @@ void nms(float *inImg, float *nmsImg, float *gradImg, int height, int width)
       }
 
       float center = getPoint(inImg, i, j, height, width);
-      *(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
-      //*(nmsImg + i + j*width) = maxSupp(center, p1, p2);
+      //*(nmsImg + i + j*width) = maxSupp(center, p1, p2, p3, p4);
+      *(nmsImg + i + j*width) = maxSupp(center, p1, p2);
     }
     //fprintf(quantFile, "\n");
   }
