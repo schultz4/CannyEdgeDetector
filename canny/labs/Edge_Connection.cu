@@ -58,12 +58,12 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
                             if (edge_img[curRow * width + curCol] == 1) {
                                 strong_edge = 1;
                             }
-
-                            // Make as edge if adjacent pixel is and edge pixel
-                            if (strong_edge == 1) {
-                                edge_img[curRow * width + curCol] = 1;  
-                            }
                         }
+
+                        // Make as edge if adjacent pixel is and edge pixel
+                        if (strong_edge == 1) {
+                            edge_img[curRow * width + curCol] = 1;  
+                        }  
                     }
                 }
             }
@@ -72,8 +72,9 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
 }
 
 
+/*
 __global__ void thresh_detection_global_kernel(float *image, float *weak_img, float *edge_img, double thresh_high,
-                                        int width, int height,) {
+                                        int width, int height) {
 
     // Set lower threshold from high threshold
     double thresh_low = thresh_high - 0.2;
@@ -131,14 +132,17 @@ __global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, 
                         if (edge_img[curRow * width + curCol] == 1) {
                             strong_edge = 1;
                         }
+                    }
 
-                        // Make as edge if adjacent pixel is and edge pixel
-                        if (strong_edge == 1) {
-                            edge_img[curRow * width + curCol] = 1;  
-                        }
+                    // Make as edge if adjacent pixel is and edge pixel
+                    if (strong_edge == 1) {
+                        edge_img[curRow * width + curCol] = 1;  
+                        
                     }
                 }
             }
         }
     }
 }
+
+*/

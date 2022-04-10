@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
 	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
 	cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(int));
 	cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(int));
-	//cudaMalloc((void **)&deviceEdgeImage, imageWidth*imageHeight*sizeof(int));
-	//cudaMalloc((void **)&deviceWeakEdgeImage, imageWidth*imageHeight*sizeof(int))
+	//cudaMalloc((void **)&deviceEdgeImage, imageWidth*imageHeight*sizeof(float));
+	//cudaMalloc((void **)&deviceWeakEdgeImage, imageWidth*imageHeight*sizeof(float))
 
 	// Stop memory allocation timer
 	wbTime_stop(GPU, "Doing GPU memory allocation");
@@ -182,6 +182,12 @@ int main(int argc, char *argv[])
 
 	// Call sobel filtering kernel
 	//GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
+
+	// Call strong weak and non edge detection kernel
+	//thresh_detection_global_kernel<<<GridDim, BlockDim>>>(image, deviceWeakEdgeImage, deviceEdgeImage, deviceThresh, imageHeight, imageWidth);
+
+	//Call edge detection kernel
+	//edge_connection_global_kernel<<<GridDim, BlockDim>>>(deviceWeakEdgeImage, deviceEdgeImage, imageHeight, imageWidth);
 
 	// Stop computation timer
 	wbTime_stop(Compute, "Doing the computation on the GPU");
