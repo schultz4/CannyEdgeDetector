@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
 	float *hostBlurImageData;
 	float *hostGradMagData;
 	float *hostGradPhaseData;
-	//float *hostEdgeImage;
-	//float *hostWeakEdgeImage;
+	float *hostEdgeData;
+	float *hostWeakEdgeData;
 
 	// Device side parameters
 	float *deviceInputImageData;
@@ -49,14 +49,16 @@ int main(int argc, char *argv[])
 	float *deviceBlurImageData;
 	float *deviceGradMagData;
 	float *deviceGradPhaseData;
-	//float *deviceEdgeImage;
-	//float *deviceWeakEdgeImage;
+	float *deviceEdgeData;
+	float *deviceWeakEdgeData;
 	
 	// Filtering parameters
 	float *BlurImageData;
 	float *GradMagData;
 	float *GradPhaseData;
 	float *NmsImageData;
+	float *EdgeData;
+	float *WeakEdgeData;
 
 	// Otsu's Method parameters
 	unsigned int *histogram;
@@ -84,6 +86,12 @@ int main(int argc, char *argv[])
 	// Define output image data
 	hostInputImageData = wbImage_getData(inputImage);
 
+	// Initialize memory for the output image
+	// Note - input image is 3 channels. Other phases only have 1 channel
+	// float *outData = (float *)calloc(imageHeight*imageWidth*imageChannels,sizeof(float));
+	float *outData = (float *)calloc(imageHeight*imageWidth,sizeof(float));
+	outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
+
 
 	////////////////////////////////
 	// Host Memory Initialization //
@@ -95,21 +103,19 @@ int main(int argc, char *argv[])
 	hostBlurImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostGradMagData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 	hostGradPhaseData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostEdgeData 		  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
+	hostWeakEdgeData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
 	// Allocate memory for serial filtering and initialize to 0
-	BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	BlurImageData       = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	EdgeData	 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+	WeakEdgeData   		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
 	// Allocate memory on host and initialize to 0
 	histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
-
-  // Initialize memory for the output image
-  // Note - input image is 3 channels. Other phases only have 1 channel
-  // float *outData = (float *)calloc(imageHeight*imageWidth*imageChannels,sizeof(float));
-  float *outData = (float *)calloc(imageHeight*imageWidth,sizeof(float));
-	outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
   
 
 	/////////////////////////
@@ -141,11 +147,11 @@ int main(int argc, char *argv[])
 	// Allocate memory on device
 	cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float));
 	cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(int));
-	cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(int));
-	cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(int));
-	//cudaMalloc((void **)&deviceEdgeImage, imageWidth*imageHeight*sizeof(int));
-	//cudaMalloc((void **)&deviceWeakEdgeImage, imageWidth*imageHeight*sizeof(int))
+	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float));
 
 	// Stop memory allocation timer
 	wbTime_stop(GPU, "Doing GPU memory allocation");
@@ -218,29 +224,49 @@ int main(int argc, char *argv[])
 	// Calculate gradient using Sobel Operators
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
 
-  // Suppress non-maximum pixels along gradient
-  nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
+	// Suppress non-maximum pixels along gradient
+	nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
-	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
+	Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram);
 
-  // Copy image data for output image (choose 1 - can only log one at a time for now
-  // For GPU execution
-  //memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+	threshold_detection_serial(NmsImageData, WeakEdgeData, EdgeData, thresh, imageWidth, imageHeight);
 
-  // For Host execution
-  //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
+	edge_connection_serial(WeakEdgeData, EdgeData, imageWidth, imageHeight);
+
+	
+
+	////////////////////////
+	// Logging and Output //
+	////////////////////////
+
+
+	// Copy image data for output image (choose 1 - can only log one at a time for now
+	// For GPU execution
+	//memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
+
+	// For Host execution
+	//memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, WeakEdgeData, imageHeight*imageWidth*sizeof(float));
+	memcpy(outData, EdgeData, imageHeight*imageWidth*sizeof(float));
+
+	// Export image
+	char *oFile = wbArg_getOutputFile(args);
+	wbExport(oFile, outputImage);
+
 
 	////////////////////
 	// Debugging Info //
@@ -257,6 +283,7 @@ int main(int argc, char *argv[])
 	printf("Histogram[20] = %u\n",histogram[20]);
 	printf("Histogram[45] = %u\n",histogram[45]);
 	printf("Histogram[56] = %u\n",histogram[56]);
+	printf("Histogram[255] = %u\n",histogram[255]);
 	printf("Image[0] = %f\n",hostGrayImageData[0]);
 	printf("Image[1] = %f\n",hostGrayImageData[1]);
 	printf("Image[36] = %f\n",hostGrayImageData[36]);
@@ -276,12 +303,12 @@ int main(int argc, char *argv[])
 	printf("Gradient phase at [0] = %f\n",GradPhaseData[0]);
 	printf("Gradient phase at [20] = %f\n",GradPhaseData[20]);
 	printf("Gradient phase at [290] = %f\n",GradPhaseData[290]);
+	printf("NMS at [0] = %f\n",NmsImageData[0]);
+	printf("NMS at [20] = %f\n",NmsImageData[20]);
+	printf("NMS at [130] = %f\n",NmsImageData[130]);
+	printf("NMS at [131] = %f\n",NmsImageData[131]);
 	printf("Otsu's Threshold = %f\n", thresh);
 	printf("\n");
-
-	// Export image
-	char *oFile = wbArg_getOutputFile(args);
-	wbExport(oFile, outputImage);
 
 
 	//////////////
@@ -295,20 +322,24 @@ int main(int argc, char *argv[])
 	cudaFree(deviceBlurImageData);
 	cudaFree(deviceGradMagData);
 	cudaFree(deviceGradPhaseData);
-	//cudaFree(deviceEdgeImage);
-	//cudaFree(deviceWeakEdgeImage);
+	cudaFree(deviceEdgeData);
+	cudaFree(deviceWeakEdgeData);
 
-	// Destroy all host memory
+	// Destroy host memory
 	free(hostBlurImageData);
 	free(hostGradMagData);
 	free(hostGradPhaseData);
-	//free(BlurImageData);
+	free(hostEdgeData);
+	free(hostWeakEdgeData);
+
+	// Destroy CPU memory
+	free(BlurImageData);
 	free(GradMagData);
 	free(GradPhaseData);
 	free(NmsImageData);
 	free(histogram);
-	//free(EdgeImage);
-	//free(WeakEdgeImage);
+	free(EdgeData);
+	free(WeakEdgeData);
 
 	// Destroy images
 	wbImage_delete(outputImage);
