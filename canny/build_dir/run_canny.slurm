@@ -61,8 +61,8 @@ for i in ${PATHS[@]}
 do
    file=output$((count)).txt
    imgOutFile=outputImg$((count)).ppm
-   ${cuda_memcheck} ./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file
-   ${memcheck} ./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
+   ${cuda_memcheck} ./CannyImage_Solution -f 5 -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file 
+   ${memcheck} ./CannyImage_Serial -f 5 -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
    count=$((count+1))
 done
 

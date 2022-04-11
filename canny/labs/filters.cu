@@ -4,7 +4,7 @@
 //  gradient descent = GradientSobel
 #include "filters.h"
 
-void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
+void populate_blur_filter(double *outFilter, size_t filterEdgeLen)
 {
     //double scaleVal = 1;
     //double stDev = (double)FILTERSIZE/3;
@@ -13,19 +13,19 @@ void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE])
     double pi = M_PI;
 	 double scaleFac = (1 / (2*pi*stDevSq));
 
-    for (int i = 0; i < FILTERSIZE; ++i) {
-        for (int j = 0; j < FILTERSIZE; ++j) {
+    for (int i = 0; i < filterEdgeLen; ++i) {
+        for (int j = 0; j < filterEdgeLen; ++j) {
 
 			// pow() is slow so just multiply out
-            double xComp = (i + 1 - (FILTERSIZE+1)/2) * (i + 1 - (FILTERSIZE+1)/2);
-            double yComp = (j + 1 - (FILTERSIZE+1)/2) * (j + 1 - (FILTERSIZE+1)/2);
+            double xComp = (i + 1 - (filterEdgeLen+1)/2) * (i + 1 - (filterEdgeLen+1)/2);
+            double yComp = (j + 1 - (filterEdgeLen+1)/2) * (j + 1 - (filterEdgeLen+1)/2);
 
             //calculate the value at each index of the Kernel
             double filterVal = exp(-(xComp + yComp) / (2 * stDevSq));
             filterVal = scaleFac * filterVal;
 
             //populate Kernel
-            outFilter[i][j] = filterVal;
+            outFilter[i + j*filterEdgeLen] = filterVal;
 
 	/*
             if (i==0 && j==0)
@@ -78,7 +78,7 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
 
 
 // the gaussian blur is just a conv2d with a filter
-__global__ void Conv2D(int *inImg, int *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
+__global__ void Conv2D(int *inImg, int *outImg, double *filter, int width, int height, size_t filterSize) {
    int row = blockIdx.y * blockDim.y + threadIdx.y;
    int col = blockIdx.x * blockDim.x + threadIdx.x;
    int halfFilter = (int)filterSize/2;
@@ -97,7 +97,7 @@ __global__ void Conv2D(int *inImg, int *outImg, double filter[FILTERSIZE][FILTER
            
             // only count the ones that are inside the boundaries
             if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width) {
-               pixelvalue += inImg[cur_row*width + cur_col] * filter[j][k];
+               pixelvalue += inImg[cur_row*width + cur_col] * filter[j + k*filterSize];
 	    }
            
          }
@@ -108,8 +108,8 @@ __global__ void Conv2D(int *inImg, int *outImg, double filter[FILTERSIZE][FILTER
 
 }
 
-__global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, int height, int width) {
-   int filterSize = (int)FILTERSIZE;
+__global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
+   //int filterSize = (int)FILTERSIZE;
    int row = blockIdx.y * blockDim.y + threadIdx.y;
    int col = blockIdx.x * blockDim.x + threadIdx.x;
    
@@ -171,7 +171,7 @@ __global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, i
 }
 
 
-void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize) {
+void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
 
     // find center position of kernel (half of kernel size)
     int filterHalf = filterSize / 2;
@@ -193,7 +193,7 @@ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERS
                     int cur_row = start_row + j;
                     int cur_col = start_col + k;
                     if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width) {
-                        pixelvalue += inImg[cur_row*width + cur_col] * filter[j][k];
+                        pixelvalue += inImg[cur_row*width + cur_col] * filter[j + k*filterSize];
                     }
                 }
             }
@@ -203,10 +203,10 @@ void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERS
 }
 
 
-void GradientSobelSerial(float *inImg, float *mag, float *phase, int height, int width)
+void GradientSobelSerial(float *inImg, float *mag, float *phase, int height, int width, size_t filterSize)
 {
 
-	int filterSize = (int)FILTERSIZE;
+	//int filterSize = (int)FILTERSIZE;
 	int halfFilter = (int)(filterSize)/2;
 	
 	// To detect horizontal lines, G_x. 
