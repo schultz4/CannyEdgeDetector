@@ -113,6 +113,7 @@ wbArg_t wbArg_read(int argc, char **argv) {
   wbArg_t arg;
 
   arg = wbArg_new(&argc, &argv);
+  wbArg_setInputFilterSize(arg, 3); // Default filter size
   for (ii = 0; ii < argc; ii++) {
     if (wbString_startsWith(argv[ii], "-s")) {
       parseSessionId(argv[++ii]);
@@ -134,6 +135,11 @@ wbArg_t wbArg_read(int argc, char **argv) {
     } else if (wbString_startsWith(argv[ii], "-t")) {
       char *type = parseString(argv[++ii]);
       wbArg_setType(arg, type);
+    } else if (wbString_startsWith(argv[ii], "-f")) {
+      // TODO - set filter size here
+      char *size = parseString(argv[++ii]);
+      printf("DEBUG: filter size=%s\n", size);
+      wbArg_setInputFilterSize(arg, atoi(size)); 
     } else if (argv[ii][0] == '-') {
       wbLog(ERROR, "Unexpected program option ", argv[ii]);
     }

@@ -6,6 +6,7 @@
 struct st_wbArg_t {
   char * sessionId;
   int inputCount;
+  size_t inputFilterSize;
   char **inputFiles;
   char *outputFile;
   char *expectedOutput;
@@ -13,6 +14,7 @@ struct st_wbArg_t {
 };
 
 #define wbArg_getInputCount(wa) ((wa).inputCount)
+#define wbArg_getInputFilterSize(wa) ((wa).inputFilterSize)
 #define wbArg_getInputFiles(wa) ((wa).inputFiles)
 #define wbArg_getInputFile(wa, ii) (wbArg_getInputFiles(wa)[ii])
 #define wbArg_getOutputFile(wa) ((wa).outputFile)
@@ -21,6 +23,7 @@ struct st_wbArg_t {
 #define wbArg_getType(wa) ((wa).type)
 
 #define wbArg_setSessionId(wa, val) (wbArg_getSessionId(wa) = val)
+#define wbArg_setInputFilterSize(wa, val) (wbArg_getInputFilterSize(wa) = val)
 #define wbArg_setInputCount(wa, val) (wbArg_getInputCount(wa) = val)
 #define wbArg_setInputFiles(wa, val) (wbArg_getInputFiles(wa) = val)
 #define wbArg_setInputFile(wa, ii, val) (wbArg_getInputFile(wa, ii) = val)

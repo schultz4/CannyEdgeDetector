@@ -34,6 +34,7 @@
 #hw_path=~/ece569_hpc/proj/build_dir
 ###akoglu/class/ece569/build_dir
 hw_path=${PWD}
+filter_size = 3
 
 cd $hw_path
 ###
@@ -61,8 +62,8 @@ for i in ${PATHS[@]}
 do
    file=output$((count)).txt
    imgOutFile=outputImg$((count)).ppm
-   ${cuda_memcheck} ./CannyImage_Solution -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file
-   ${memcheck} ./CannyImage_Serial -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
+   ${cuda_memcheck} ./CannyImage_Solution -f ${filter_size} -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file 
+   ${memcheck} ./CannyImage_Serial -f ${filter_size} -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
    count=$((count+1))
 done
 

@@ -5,8 +5,6 @@
 #include "non_max_supp.h"
 #include "Edge_Connection.h"
 
-#define FILTERSIZE 3
-
 #define wbCheck(stmt)                                                     \
   do {                                                                    \
     cudaError_t err = stmt;                                               \
@@ -30,6 +28,7 @@ int main(int argc, char *argv[])
 	int imageChannels;
 	int imageWidth;
 	int imageHeight;
+  size_t filterSize = 3;
 	char *inputImageFile;
 	wbImage_t inputImage;
 	wbImage_t outputImage;
@@ -74,6 +73,7 @@ int main(int argc, char *argv[])
 
 	// Read input file
 	inputImageFile = wbArg_getInputFile(args, 0);
+  filterSize = wbArg_getInputFilterSize(args);
 
 	// Import input image 
 	inputImage = wbImport(inputImageFile);
@@ -124,13 +124,14 @@ int main(int argc, char *argv[])
 
 
 	// Create filter skeleton
-	double filter[FILTERSIZE][FILTERSIZE];
+	//double filter[FILTERSIZE][FILTERSIZE];
+	double *filter = (double *)calloc(filterSize*filterSize, sizeof(double));
 
 	// Fill the gaussian filter
-	populate_blur_filter(filter);
+	populate_blur_filter(filter, filterSize);
 
 	// ?????
-	int filterSize = (int)FILTERSIZE;
+	//int filterSize = (int)FILTERSIZE;
 
 
 	//////////////////////////////////
@@ -222,7 +223,7 @@ int main(int argc, char *argv[])
 	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
+	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
 
 	// Suppress non-maximum pixels along gradient
 	nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
@@ -291,9 +292,18 @@ int main(int argc, char *argv[])
 	printf("Image[900] = %f\n",hostGrayImageData[900]);
 	printf("Image[1405] = %f\n",hostGrayImageData[1405]);
 	printf("Image[85000] = %f\n",hostGrayImageData[85000]);
-	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
-	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
-	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
+	//printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
+	//printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
+	//printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
+  for(size_t row = 0; row < filterSize; ++row)
+  {
+    printf("Row=%ld of Gaussian filter = ",row);
+    for(size_t col = 0; col < filterSize; ++col)
+    {
+      printf("%f ", filter[col + filterSize*row]);
+    }
+    printf("\n");
+  }
 	printf("Blurred Image[0] = %f\n",BlurImageData[0]*255);
 	printf("Blurred [25] = %f\n", BlurImageData[25]*255);
 	printf("Blurred Image[290] = %f\n",BlurImageData[290]*255);

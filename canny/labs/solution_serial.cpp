@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
 	int imageChannels;
 	int imageWidth;
 	int imageHeight;
+  size_t filterSize = 3; // default value
 	char *inputImageFile;
 	wbImage_t inputImage;
 	wbImage_t outputImage;
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]) {
 
 	// Read input file
 	inputImageFile = wbArg_getInputFile(args, 0);
+  filterSize = wbArg_getInputFilterSize(args);
 
 	// Import input image 
 	inputImage = wbImport(inputImageFile);
@@ -85,6 +87,9 @@ int main(int argc, char *argv[]) {
 	weakEdgeImage     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	edgeImage         = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
+	// Create filter skeleton
+	double *filter    = (double *)calloc(filterSize*filterSize, sizeof(double));
+
   // Initialize memory for the output image
   // Note - input image is 3 channels. Other phases only have 1 channel
   float *outData = (float *)calloc(imageHeight*imageWidth,sizeof(float));
@@ -98,14 +103,11 @@ int main(int argc, char *argv[]) {
 	/////////////////////////
 
 
-	// Create filter skeleton
-	double filter[FILTERSIZE][FILTERSIZE];
-
 	// Fill the gaussian filter
-	populate_blur_filter(filter);
+	populate_blur_filter(filter, filterSize);
 
 	// ?????
-	int filterSize = (int)FILTERSIZE;
+	//int filterSize = (int)FILTERSIZE;
 
 
 	////////////////////
@@ -119,7 +121,7 @@ int main(int argc, char *argv[]) {
 	Conv2DSerial(GrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
+	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
 
   // Suppress non-maximum pixels along gradient
   nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
@@ -177,9 +179,18 @@ int main(int argc, char *argv[]) {
 	printf("Image[900] = %f\n",GrayImageData[900]);
 	printf("Image[1405] = %f\n",GrayImageData[1405]);
 	printf("Image[85000] = %f\n",GrayImageData[85000]);
-	printf("First row of Gaussian filter = %f %f %f\n",filter[0][0], filter[0][1], filter[0][2]);
-	printf("Second row of Gaussian filter = %f %f %f\n",filter[1][0], filter[1][1], filter[1][2]);
-	printf("Third row of Gaussian filter = %f %f %f\n",filter[2][0], filter[2][1], filter[2][2]);
+	//printf("First row of Gaussian filter = %f %f %f\n",filter[0], filter[1], filter[2]);
+	//printf("Second row of Gaussian filter = %f %f %f\n",filter[0 + 1*filterSize], filter[1 + 1*filterSize], filter[2 + 1*filterSize]);
+	//printf("Third row of Gaussian filter = %f %f %f\n",filter[2*filterSize], filter[1 + 2*filterSize], filter[2 + 2*filterSize]);
+  for(size_t row = 0; row < filterSize; ++row)
+  {
+    printf("Row=%ld of Gaussian filter = ",row);
+    for(size_t col = 0; col < filterSize; ++col)
+    {
+      printf("%f ", filter[col + filterSize*row]);
+    }
+    printf("\n");
+  }
 	printf("Otsu's Threshold = %f\n", thresh);
 	printf("\n");
 

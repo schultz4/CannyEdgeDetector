@@ -1,10 +1,9 @@
 #include "filters.h"
 #include "test-code.h"
 
-void GradientSobelPhaseOnlySerial(float *inImg, float *phase, int height, int width)
+void GradientSobelPhaseOnlySerial(float *inImg, float *phase, int height, int width, size_t filterSize)
 {
 
-	int filterSize = (int)FILTERSIZE;
 	int halfFilter = (int)(filterSize)/2;
 	
 	// To detect horizontal lines, G_x. 
