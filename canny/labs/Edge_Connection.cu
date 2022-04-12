@@ -77,7 +77,7 @@ __global__ void thresh_detection_global_kernel(float *image, float *weak_img, fl
                                         int width, int height) {
 
     // Set lower threshold from high threshold
-    double thresh_low = thresh_high - 0.2;
+    float thresh_low = thresh_high / 2;
 
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x
@@ -111,23 +111,34 @@ __global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, 
     int edge_size = 1;
 
     // Set up thread ID
+<<<<<<< Updated upstream
     int Col = threadIdx.x + blockIdx.x * blockDim.x
     int Row = threadIdx.y + blockIdx.y * blockDim.y
     if ((Col < width) && (Row < heigth)) {
+=======
+    int Col = threadIdx.x + blockIdx.x * blockDim.x;
+    int Row = threadIdx.y + blockIdx.y * blockDim.y;
+    if ((Col < width) && (Row < height)) 
+    {
+>>>>>>> Stashed changes
 
         // Find weak pixel and determine if it is adjacent to edge pixel
         // Changed to add correct boundary
-        if (weak_img[Row * width + Col] == 1) {
-                int strong_edge = 0;
+        if (weak_img[Row * width + Col] == 1) 
+        {
+            int sum = 0;
 
 
              // Scan adjacent pixels
-            for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) {
-                for ( int edge_col = -edge_size; edge_col < edge_size+1; ++edge_col) {
+            for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) 
+            {
+                for ( int edge_col = -edge_size; edge_col < edge_size+1; ++edge_col) 
+                {
                     int curRow = Row + edge_row;
                     int curCol = Col + edge_col;
 
                     // Make sure adjacent pixels are not beyond the boundary of the image
+<<<<<<< Updated upstream
                     if (curRow > -1 && curRow < height && curCol > -1 && curCol < width) {
                         if (edge_img[curRow * width + curCol] == 1) {
                             strong_edge = 1;
@@ -138,9 +149,24 @@ __global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, 
                     if (strong_edge == 1) {
                         edge_img[curRow * width + curCol] = 1;  
                         
+=======
+                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width)
+                    {
+                        // Sum all pixels in a 3X3 area
+                        sum += edge_img[curRow * width + curCol]; 
+>>>>>>> Stashed changes
                     }
                 }
             }
+			// Subtract center pixel from sum
+			sum = sum - edge_img[Row * width + Col];
+				
+		    if (sum > 0)
+			{
+				weak_img[Row * width + Col] = 0;
+	            edge_img[Row * width + Col] = 1;  
+	        }
+
         }
     }
 }
