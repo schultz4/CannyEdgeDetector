@@ -34,7 +34,7 @@
 #hw_path=~/ece569_hpc/proj/build_dir
 ###akoglu/class/ece569/build_dir
 hw_path=${PWD}
-filter_size = 3
+filter_size=3
 
 cd $hw_path
 ###

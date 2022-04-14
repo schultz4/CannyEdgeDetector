@@ -78,14 +78,14 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
 
 
 // the gaussian blur is just a conv2d with a filter
-__global__ void Conv2D(int *inImg, int *outImg, double *filter, int width, int height, size_t filterSize) {
+__global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
    int row = blockIdx.y * blockDim.y + threadIdx.y;
    int col = blockIdx.x * blockDim.x + threadIdx.x;
    int halfFilter = (int)filterSize/2;
 
    // boundary check if it's in the image
    if(row > 0 && row < height && col > 0 && col < width) {
-      int pixelvalue = 0;
+      float pixelvalue = 0;
       int start_col = col - halfFilter;
       int start_row = row - halfFilter;
       
@@ -103,12 +103,12 @@ __global__ void Conv2D(int *inImg, int *outImg, double *filter, int width, int h
          }
       }
       __syncthreads();
-      outImg[row*width + col] = (int)(pixelvalue);      
+      outImg[row*width + col] = pixelvalue;      
    }
 
 }
 
-__global__ void GradientSobel(int *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
+__global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
    //int filterSize = (int)FILTERSIZE;
    int row = blockIdx.y * blockDim.y + threadIdx.y;
    int col = blockIdx.x * blockDim.x + threadIdx.x;
