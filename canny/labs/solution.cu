@@ -51,7 +51,6 @@ int main(int argc, char *argv[])
 	float *deviceGradPhaseData;
 	float *deviceEdgeData;
 	float *deviceWeakEdgeData;
-	float *deviceWeakEdgeData;
 	float *deviceThresh;
 
 	// Filtering parameters
