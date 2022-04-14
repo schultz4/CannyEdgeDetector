@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
-	double thresh = Otsu_Sequential(histogram);
+	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
 
 	// Calculate strong, weak, and non edges using thresholds
 	threshold_detection_serial(BlurImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
