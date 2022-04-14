@@ -167,6 +167,8 @@ int main(int argc, char *argv[])
 	cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float));
 	cudaMalloc((void **)&deviceHistogram, 256*sizeof(unsigned int));
 	cudaMalloc((void **)&deviceThresh, sizeof(float));
+	cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float));
+	cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float));
 
 	// Initialize cuda memory
 	cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int));
@@ -225,6 +227,16 @@ int main(int argc, char *argv[])
 
 	NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
 	
+	cudaDeviceSynchronize();
+
+	// Threshold detection global memory kernal
+	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
+
+	cudaDeviceSynchronize();
+
+	// Global Memory edge connection kernal
+	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
+
 	cudaDeviceSynchronize();
 
 	// Stop computation timer
