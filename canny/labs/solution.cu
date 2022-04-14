@@ -200,18 +200,24 @@ int main(int argc, char *argv[])
 
 	// Call RGB to grayscale conversion kernel
 	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
-
 	cudaDeviceSynchronize();
+  cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	// Call image burring kernel
-	//Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
+	Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
 
+	cudaDeviceSynchronize();
+  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 	// Call sobel filtering kernel
-	//GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceSobelImageData, deviceSobelImageData, imageHeight, imageWidth); 
+	GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, filterSize); 
 
+	cudaDeviceSynchronize();
+  cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 	// Suppress non-maximum pixels along gradient
 	nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
-
+	cudaDeviceSynchronize();
+  cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
 
@@ -284,7 +290,7 @@ int main(int argc, char *argv[])
 	// Copy image data for output image (choose 1 - can only log one at a time for now
 	// For GPU execution
 	//memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
-	//memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+	memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
@@ -298,7 +304,7 @@ int main(int argc, char *argv[])
 	//memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, WeakEdgeData, imageHeight*imageWidth*sizeof(float));
-	memcpy(outData, EdgeData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, EdgeData, imageHeight*imageWidth*sizeof(float));
 
 	// Export image
 	char *oFile = wbArg_getOutputFile(args);

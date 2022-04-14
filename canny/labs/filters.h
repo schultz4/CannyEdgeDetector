@@ -9,7 +9,8 @@ void ColorToGrayscaleSerial(float *input, float *output, unsigned int y, unsigne
 
 #ifdef __CUDACC__
 __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height); 
-__global__ void Conv2D(int *inImg, int *outImg, double *filter, int width, int height, size_t filterSize); 
+__global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize); 
+__global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize); 
 #endif
 
 #endif // __FILTERS_H__
