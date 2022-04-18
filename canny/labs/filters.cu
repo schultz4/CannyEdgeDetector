@@ -109,64 +109,64 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 }
 
 __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
-   //int filterSize = (int)FILTERSIZE;
-   int row = blockIdx.y * blockDim.y + threadIdx.y;
-   int col = blockIdx.x * blockDim.x + threadIdx.x;
-   
-   // To detect horizontal lines, G_x. 
-   const int fmat_x[3][3] = {
-         {-1, 0, 1},
-         {-2, 0, 2},
-         {-1, 0, 1}
-   };
-   // To detect vertical lines, G_y 
-   const int fmat_y[3][3]  = {
-         {-1, -2, -1},
-         {0,   0,  0},
-         {1,   2,  1}
-   };
+  //int filterSize = (int)FILTERSIZE;
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-   // now do the filtering
-   // halfFitler is how many are on each side
-   int halfFilter = (int)filterSize/2;
-   double sumx = 0;
-   double sumy = 0;
-   //// DO THE SOBEL FILTERING ///////////
+  // To detect horizontal lines, G_x. 
+  const int fmat_x[3][3] = {
+    {-1, 0, 1},
+    {-2, 0, 2},
+    {-1, 0, 1}
+  };
+  // To detect vertical lines, G_y 
+  const int fmat_y[3][3]  = {
+    {-1, -2, -1},
+    {0,   0,  0},
+    {1,   2,  1}
+  };
 
-   // boundary check if it's in the image
-   if(row > 0 && row < height && col > 0 && col < width) {
-      int start_col = col - halfFilter;
-      int start_row = row - halfFilter;
+  // now do the filtering
+  // halfFitler is how many are on each side
+  int halfFilter = (int)filterSize/2;
+  double sumx = 0;
+  double sumy = 0;
+  //// DO THE SOBEL FILTERING ///////////
 
-      // now do the filtering
-      for (int j = 0; j < filterSize; ++j) {
-         for (int k = 0; k < filterSize; ++k) {
-            int cur_row = start_row + j;
-            int cur_col = start_col + k;
+  // boundary check if it's in the image
+  if(row > 0 && row < height && col > 0 && col < width) {
+    int start_col = col - halfFilter;
+    int start_row = row - halfFilter;
 
-            // only count the ones that are inside the boundaries
-            if (cur_row >=0 && cur_row < height) {
-               sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k];
-            }
-	    if ( cur_col >= 0 && cur_col < width) {
-               sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
-            }
-         }
+    // now do the filtering
+    for (int j = 0; j < filterSize; ++j) {
+      for (int k = 0; k < filterSize; ++k) {
+        int cur_row = start_row + j;
+        int cur_col = start_col + k;
+
+        // only count the ones that are inside the boundaries
+        if (cur_row >=0 && cur_row < height) {
+          sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k];
+        }
+        if ( cur_col >= 0 && cur_col < width) {
+          sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
+        }
+        __syncthreads();
       }
-      // now calculate the sobel output and gradients
-      __syncthreads();
-      int value = sqrt(sumx * sumx + sumy*sumy);
-      if (value > 255) {
-          value = 255;
-      } 
-      if (value < 0) {
-          value = 0;
-      }
-      sobelImg[row*width + col] = value; // output of the sobel filter
-      gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
-   }
- 
-   __syncthreads();
+    }
+    // now calculate the sobel output and gradients
+    int value = sqrt(sumx * sumx + sumy*sumy);
+    if (value > 255) {
+      value = 255;
+    } 
+    if (value < 0) {
+      value = 0;
+    }
+    sobelImg[row*width + col] = value; // output of the sobel filter
+    gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
+  }
+
+  //__syncthreads();
 
 }
 
