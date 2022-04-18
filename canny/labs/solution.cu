@@ -196,7 +196,8 @@ int main(int argc, char *argv[])
 	dim3 BlockDim(blocksize,blocksize);
 
 	// Set x and y grid dimension 
-	dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
+	//dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
+	dim3 GridDim(ceil(imageWidth / blocksize), ceil(imageHeight/blocksize));  
 
 	// Call RGB to grayscale conversion kernel
 	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
