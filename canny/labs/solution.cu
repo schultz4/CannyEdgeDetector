@@ -137,9 +137,12 @@ int main(int argc, char *argv[])
 	// Create filter skeleton
 	//double filter[FILTERSIZE][FILTERSIZE];
 	double *filter = (double *)calloc(filterSize*filterSize, sizeof(double));
+  double *deviceFilter;
+  wbCheck(cudaMalloc((void **)&deviceFilter, filterSize*filterSize*sizeof(double)));
 
 	// Fill the gaussian filter
 	populate_blur_filter(filter, filterSize);
+  wbCheck(cudaMemcpy(deviceFilter, filter, filterSize*filterSize*sizeof(double), cudaMemcpyHostToDevice));
 
 	// ?????
 	//int filterSize = (int)FILTERSIZE;
@@ -206,7 +209,7 @@ int main(int argc, char *argv[])
   //cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	// Call image burring kernel
-	Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
+	Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
 
 	wbCheck(cudaDeviceSynchronize());
   wbCheck(cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost));
@@ -290,7 +293,7 @@ int main(int argc, char *argv[])
 	// Copy image data for output image (choose 1 - can only log one at a time for now
 	// For GPU execution
 	//memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
-	//memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+	memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
@@ -299,7 +302,7 @@ int main(int argc, char *argv[])
 
 	// For Host execution
 	//memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-	memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
