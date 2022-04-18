@@ -205,32 +205,30 @@ int main(int argc, char *argv[])
 	// Call RGB to grayscale conversion kernel
 	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
 	wbCheck(cudaDeviceSynchronize());
-	//cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-  //cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	// Call image burring kernel
 	Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
 
 	wbCheck(cudaDeviceSynchronize());
-  wbCheck(cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost));
+
 	// Call sobel filtering kernel
 	GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, filterSize); 
 
-	//cudaDeviceSynchronize();
+	wbCheck(cudaDeviceSynchronize());
   //cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
   //cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 	// Suppress non-maximum pixels along gradient
 	nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
-	//cudaDeviceSynchronize();
+	wbCheck(cudaDeviceSynchronize());
   //cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
 
-	//cudaDeviceSynchronize();
+	wbCheck(cudaDeviceSynchronize());
 
 	NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
 	
-	//cudaDeviceSynchronize();
+	wbCheck(cudaDeviceSynchronize());
 
 	// Stop computation timer
 	wbTime_stop(Compute, "Doing the computation on the GPU");
