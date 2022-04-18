@@ -200,8 +200,7 @@ int main(int argc, char *argv[])
   dim3 BlockDim(blocksize,blocksize);
 
   // Set x and y grid dimension 
-  //dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
-  dim3 GridDim(ceil(imageWidth / blocksize), ceil(imageHeight/blocksize));  
+  dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
 
   // Call RGB to grayscale conversion kernel
   ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
@@ -221,7 +220,8 @@ int main(int argc, char *argv[])
   nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
   wbCheck(cudaDeviceSynchronize());
 
-  NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
+  //NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
+  NaiveHistogram<<<GridDim,BlockDim>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
 
   wbCheck(cudaDeviceSynchronize());
 
