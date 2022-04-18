@@ -157,19 +157,19 @@ int main(int argc, char *argv[])
 	wbTime_start(GPU, "Doing GPU memory allocation");
 
 	// Allocate memory on device
-	cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float));
-	cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(float));
-  cudaMalloc((void **)&deviceNmsImageData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float));
-	cudaMalloc((void **)&deviceHistogram, 256*sizeof(unsigned int));
-	cudaMalloc((void **)&deviceThresh, sizeof(float));
+	wbCheck(cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(float)));
+  wbCheck(cudaMalloc((void **)&deviceNmsImageData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float)));
+	wbCheck(cudaMalloc((void **)&deviceHistogram, 256*sizeof(unsigned int)));
+	wbCheck(cudaMalloc((void **)&deviceThresh, sizeof(float)));
 
 	// Initialize cuda memory
-	cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int));
+	wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
 
 	// Stop memory allocation timer
 	wbTime_stop(GPU, "Doing GPU memory allocation");
@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
 	wbTime_start(Copy, "Copying data to the GPU");
 
 	// Copy input image from host to device
-	cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels*imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice);
+	wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels*imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice));
 
 
 	///////////////////
@@ -200,32 +200,33 @@ int main(int argc, char *argv[])
 
 	// Call RGB to grayscale conversion kernel
 	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
-	cudaDeviceSynchronize();
-  cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+	wbCheck(cudaDeviceSynchronize());
+	//cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+  //cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	// Call image burring kernel
 	Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, filter, imageWidth, imageHeight, filterSize);
 
-	cudaDeviceSynchronize();
-  cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+	wbCheck(cudaDeviceSynchronize());
+  wbCheck(cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost));
 	// Call sobel filtering kernel
 	GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, filterSize); 
 
-	cudaDeviceSynchronize();
-  cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+	//cudaDeviceSynchronize();
+  //cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+  //cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 	// Suppress non-maximum pixels along gradient
 	nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
-	cudaDeviceSynchronize();
-  cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+	//cudaDeviceSynchronize();
+  //cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
 
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 
 	NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
 	
-	cudaDeviceSynchronize();
+	//cudaDeviceSynchronize();
 
 	// Stop computation timer
 	wbTime_stop(Compute, "Doing the computation on the GPU");
@@ -240,11 +241,9 @@ int main(int argc, char *argv[])
 	wbTime_start(Copy, "Copying data from the GPU");
 
 	// Copy data from device back to host
-	cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth*imageHeight*sizeof(int), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostSobelImageData, deviceSobelImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
-	//cudaMemcpy(hostGradientImageData, deviceGradientImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost); 
+	cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
 	cudaMemcpy(hostHistogram, deviceHistogram, 256*sizeof(unsigned int), cudaMemcpyDeviceToHost);
 	cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost); 
@@ -263,22 +262,22 @@ int main(int argc, char *argv[])
 	Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
-	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
+	//GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
 
 	// Suppress non-maximum pixels along gradient
-	nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
+	//nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
-	Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
+	//Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
-	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
+	//double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
 
 	// Perorm hysteresis on NMS image
-	threshold_detection_serial(NmsImageData, WeakEdgeData, EdgeData, thresh, imageWidth, imageHeight);
+	//threshold_detection_serial(NmsImageData, WeakEdgeData, EdgeData, thresh, imageWidth, imageHeight);
 
 	// Link edges
-	edge_connection_serial(WeakEdgeData, EdgeData, imageWidth, imageHeight);
+	//edge_connection_serial(WeakEdgeData, EdgeData, imageWidth, imageHeight);
 
 	
 
@@ -290,7 +289,7 @@ int main(int argc, char *argv[])
 	// Copy image data for output image (choose 1 - can only log one at a time for now
 	// For GPU execution
 	//memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
-	memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
@@ -299,7 +298,7 @@ int main(int argc, char *argv[])
 
 	// For Host execution
 	//memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-	//memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+	memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
@@ -358,7 +357,7 @@ int main(int argc, char *argv[])
 	printf("NMS at [20] = %f\n",NmsImageData[20]);
 	printf("NMS at [130] = %f\n",NmsImageData[130]);
 	printf("NMS at [131] = %f\n",NmsImageData[131]);
-	printf("Otsu's Threshold = %f\n", thresh);
+	//printf("Otsu's Threshold = %f\n", thresh);
 	printf("\n");
 
 
