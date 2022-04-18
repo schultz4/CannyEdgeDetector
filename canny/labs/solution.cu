@@ -11,6 +11,7 @@
     if (err != cudaSuccess) {                                             \
       wbLog(ERROR, "Failed to run stmt ", #stmt);                         \
       wbLog(ERROR, "Got CUDA error ...  ", cudaGetErrorString(err));      \
+      cudaDeviceReset();                                                  \
       return -1;                                                          \
     }                                                                     \
   } while (0)
@@ -376,6 +377,7 @@ int main(int argc, char *argv[])
   cudaFree(deviceWeakEdgeData);
   cudaFree(deviceHistogram);
   cudaFree(deviceThresh);
+  cudaFree(deviceFilter);
 
   // Destroy host memory
   free(hostBlurImageData);
@@ -386,6 +388,7 @@ int main(int argc, char *argv[])
   free(hostWeakEdgeData);
   free(hostHistogram);
   free(hostThresh);
+  free(filter);
 
   // Destroy CPU memory
   free(BlurImageData);
