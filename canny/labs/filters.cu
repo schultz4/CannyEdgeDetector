@@ -151,23 +151,14 @@ __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg,
         if ( cur_col >= 0 && cur_col < width) {
           sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
         }
-        __syncthreads();
       }
     }
+
     // now calculate the sobel output and gradients
-    int value = sqrt(sumx * sumx + sumy*sumy);
-    if (value > 255) {
-      value = 255;
-    } 
-    if (value < 0) {
-      value = 0;
-    }
-    sobelImg[row*width + col] = value; // output of the sobel filter
+    sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
     gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
   }
-
-  //__syncthreads();
-
+ 
 }
 
 
