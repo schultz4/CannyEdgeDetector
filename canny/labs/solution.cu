@@ -215,12 +215,10 @@ int main(int argc, char *argv[])
 	GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, filterSize); 
 
 	wbCheck(cudaDeviceSynchronize());
-  //cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
-  //cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
+
 	// Suppress non-maximum pixels along gradient
 	nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
 	wbCheck(cudaDeviceSynchronize());
-  //cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
 
 	NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
 
@@ -291,10 +289,10 @@ int main(int argc, char *argv[])
 	// Copy image data for output image (choose 1 - can only log one at a time for now
 	// For GPU execution
 	//memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
-	memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
+	//memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-	//memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+	memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
 	//memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
 
