@@ -235,15 +235,12 @@ int main(int argc, char *argv[])
   	// Threshold detection global memory kernal
 	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
 
-	wbTime(cudaDeviceSynchronize());
+	wbCheck(cudaDeviceSynchronize());
 
 	// Global Memory edge connection kernal
 	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
 
-	wbTime(cudaDeviceSynchronize());
-
-
-  wbCheck(cudaDeviceSynchronize());
+	wbCheck(cudaDeviceSynchronize());
 
   // Stop computation timer
   wbTime_stop(Compute, "Doing the computation on the GPU");
