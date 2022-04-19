@@ -265,5 +265,5 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
         }
     }
 }
-
+*/
 
