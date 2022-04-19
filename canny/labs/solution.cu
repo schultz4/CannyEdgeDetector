@@ -231,6 +231,8 @@ int main(int argc, char *argv[])
 	// Stop computation timer
 	wbTime_stop(Compute, "Doing the computation on the GPU");
   NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
+
+  wbCheck(cudaDeviceSynchronize());
   
   	// Threshold detection global memory kernal
 	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
@@ -260,7 +262,9 @@ int main(int argc, char *argv[])
   cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight*imageWidth*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy(hostHistogram, deviceHistogram, 256*sizeof(unsigned int), cudaMemcpyDeviceToHost);
-  cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost); 
+  cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaMemcpy(hostEdgeData, deviceEdgeData, imageWidth*imageHeight*sizeof(float), cudaMemcpyDeviceToHost);
 
   // Stop memory timer
   wbTime_stop(Copy, "Copying data from the GPU");
@@ -306,8 +310,8 @@ int main(int argc, char *argv[])
   //memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
 
   // For Host execution
