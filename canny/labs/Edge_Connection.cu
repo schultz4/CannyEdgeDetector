@@ -84,11 +84,11 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
 }
 
 
-__global__ void thresh_detection_global_kernel(float *image, float *weak_img, float *edge_img, double thresh_high,
+__global__ void thresh_detection_global(float *image, float *weak_img, float *edge_img, float *thresh_high,
                                         int width, int height) {
 
     // Set lower threshold from high threshold
-    double thresh_low = thresh_high - 0.2;
+    float thresh_low = thresh_high[0] / 2;
 
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -98,12 +98,12 @@ __global__ void thresh_detection_global_kernel(float *image, float *weak_img, fl
     if ((Col < width) && (Row < height)) {
 
         // Edge pixels
-        if (image[Row*width+Col] >= thresh_high){
+        if (image[Row*width+Col] >= thresh_high[0]){
             edge_img[Row*width+Col] = 1;
             weak_img[Row*width+Col] = 0;
 
         // Weak pixels
-        } else if (image[Row*width+Col] < thresh_high && image[Row*width+Col] >= thresh_low) {
+        } else if (image[Row*width+Col] < thresh_high[0] && image[Row*width+Col] >= thresh_low) {
             edge_img[Row*width+Col] = 0;
             weak_img[Row*width+Col] = 1;
 
@@ -116,7 +116,7 @@ __global__ void thresh_detection_global_kernel(float *image, float *weak_img, fl
 }
 
 
-__global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, int width, int height) {
+__global__ void edge_connection_global(float *weak_img, float *edge_img, int width, int height) {
 
     // Size of edge screach
     int edge_size = 1;
@@ -124,33 +124,146 @@ __global__ void edge_connection_global_kernel(float *weak_img, float *edge_img, 
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x;
     int Row = threadIdx.y + blockIdx.y * blockDim.y;
-    if ((Col < width) && (Row < height)) {
+    if ((Col < width) && (Row < height)) 
+    {
 
         // Find weak pixel and determine if it is adjacent to edge pixel
         // Changed to add correct boundary
-        if (weak_img[Row * width + Col] == 1) {
-                int strong_edge = 0;
+        if (weak_img[Row * width + Col] == 1) 
+        {
 
+            int sum = 0;
 
              // Scan adjacent pixels
-            for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) {
-                for ( int edge_col = -edge_size; edge_col < edge_size+1; ++edge_col) {
+            for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) 
+            {
+                for ( int edge_col = -edge_size; edge_col < edge_size+1; ++edge_col) 
+                {
                     int curRow = Row + edge_row;
                     int curCol = Col + edge_col;
 
                     // Make sure adjacent pixels are not beyond the boundary of the image
-                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width) {
-                        if (edge_img[curRow * width + curCol] == 1) {
-                            strong_edge = 1;
-                        }
-
-                        // Make as edge if adjacent pixel is and edge pixel
-                        if (strong_edge == 1) {
-                            edge_img[curRow * width + curCol] = 1;  
-                        }
+                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width)
+                    {
+                        // Sum all pixels in 3x3 neighborhood
+                        sum += edge_img[curRow * width + curCol];
                     }
                 }
             }
+
+            // Subtract center pixel from sum
+			sum = sum - edge_img[Row * width + Col];
+				
+		    if (sum > 0)
+			{
+				weak_img[Row * width + Col] = 0;
+		        edge_img[Row * width + Col] = 1;  
+		    }
         }
     }
 }
+
+/*
+__global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height) {
+
+    // Set Tile wiidth
+    int TILE_WIDTH = 16;
+
+    // Size of edge screach
+    int edge_size = 1;
+
+    // Set up thread ID
+    int bx = blockIdx.x;
+    int by = blockIdx.y;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    // Set up row and column with edge
+    int Col = tx + bx * (blockDim.x - 2 * edge_size);
+    int Row = ty + by * (blockDim.y - 2 * edge_size);
+
+    // Set bounds for edges of image
+    if ((Col < width + edge_size) && (Row < height + edge_size)) {
+
+        // Allocate shared memory
+        // Has an extra pixel on each side of the tile for neibouring image seach
+        __shared__ float chuck[TILE_WIDTH + (2 * edge_size)][TILE_WIDTH + (2 * edge_size)];
+
+        // Set row and column of image without extra boundary pixel
+        int rel_row = Row - edge_size;
+        int rel_col = Col - edge_size;
+
+        // Read image data into tile
+        // If pixel is outside image, set to zero
+        if ((rel_row < height) && (rel_col < width) && (rel_row >= 0) && (rel_col >=0)) {
+            edge_chunk[ty][tx] = edge_img[rel_row * width + rel_col];
+            weak_chunk[ty][tx] = weak_img[rel_row * width + rel_col];
+        } else {
+            edge_chunk[ty][tx] = 0;
+            weak_chunk[ty][tx] = 0;
+        }
+
+        __syncthreads();
+
+        // Filter out-of-bounds threads
+        if ((tx >= edge_size) && (ty >= edge_size) && (ty < blockDim.y - edge_size) && (tx < blockDim.x - edge_size)) {
+
+            // Find weak pixel and determine if it is adjacent to edge pixel
+            // Changed to add correct boundary
+            if (weak_chunk[ty][tx] == 1) { 
+                int sum = 0;
+                float weak_value = 1;
+                float edge_value = 0;
+
+                // Scan adjacent pixels
+                for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) {
+                    for (int edge_col = -edge_size; edge_col < edge_size+1; ++edge_col) {
+                        int curRow = ty + edge_row;
+                        int curCol = tx + edge_col;
+
+                        // Make sure adjacent pixels are not beyond the boundary of the image
+                        if ((curRow >= -1) && (curRow < height) && (curCol >= -1) && (curCol < width)) {
+
+						    // Sum all pixels in 3x3 neighborhood
+                            sum += edge_chunk[curRow][curCol];
+                        }
+                    }
+                }
+                // Subtract center pixel from sum
+			    sum = sum - edge_chunk[ty][tx];
+    
+                // Change weak edge to strong edge
+		        if (sum > 0) {
+				    weak_img[rel_row * width + rel_height]= 0;
+	                edge_img[rel_row * width + rel_height]= 1; 
+                }
+            }
+			// Subtract center pixel from sum
+			sum = sum - edge_img[Row * width + Col];
+				
+		    if (sum > 0)
+			{
+				weak_img[Row * width + Col] = 0;
+	            edge_img[Row * width + Col] = 1;  
+	        }
+
+                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width) 
+					{
+						// Sum all pixels in 3x3 neighborhood
+                        sum += edge_img[curRow * width + curCol];
+                    }
+                }
+            }
+            				// Subtract center pixel from sum
+			sum = sum - edge_img[numRow * width + numCol];
+			
+		    if (sum > 0)
+			{
+				weak_img[numRow * width + numCol] = 0;
+	            edge_img[numRow * width + numCol] = 1; 
+            } 
+        }
+    }
+}
+
+
