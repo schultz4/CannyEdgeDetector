@@ -122,12 +122,10 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
     int edge_size = 1;
 
     // Set up thread ID
-
-    int Col = threadIdx.x + blockIdx.x * blockDim.x
-    int Row = threadIdx.y + blockIdx.y * blockDim.y
-    if ((Col < width) && (Row < heigth)) {
-
-    
+    int Col = threadIdx.x + blockIdx.x * blockDim.x;
+    int Row = threadIdx.y + blockIdx.y * blockDim.y;
+    if ((Col < width) && (Row < height)) 
+    {
 
         // Find weak pixel and determine if it is adjacent to edge pixel
         // Changed to add correct boundary
@@ -135,7 +133,6 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
         {
 
             int sum = 0;
-
 
              // Scan adjacent pixels
             for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) 
@@ -250,8 +247,23 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
 	            edge_img[Row * width + Col] = 1;  
 	        }
 
+                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width) 
+					{
+						// Sum all pixels in 3x3 neighborhood
+                        sum += edge_img[curRow * width + curCol];
+                    }
+                }
+            }
+            				// Subtract center pixel from sum
+			sum = sum - edge_img[numRow * width + numCol];
+			
+		    if (sum > 0)
+			{
+				weak_img[numRow * width + numCol] = 0;
+	            edge_img[numRow * width + numCol] = 1; 
+            } 
         }
     }
 }
 
-*/
+
