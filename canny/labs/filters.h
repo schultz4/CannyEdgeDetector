@@ -1,14 +1,16 @@
 #ifndef __FILTERS_H__
 #define __FILTERS_H__
-#define FILTERSIZE 3
+//#define FILTERSIZE 3
 
-void Conv2DSerial(float *inImg, float *outImg, double filter[FILTERSIZE][FILTERSIZE], int width, int height, int filterSize);
-void populate_blur_filter(double outFilter[FILTERSIZE][FILTERSIZE]);
-void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width); 
+void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize);
+void populate_blur_filter(double *outFilter, size_t filterEdgeLen);
+void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSIze); 
 void ColorToGrayscaleSerial(float *input, float *output, unsigned int y, unsigned int x); 
 
 #ifdef __CUDACC__
 __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height); 
+__global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize); 
+__global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize); 
 #endif
 
 #endif // __FILTERS_H__

@@ -52,6 +52,16 @@ set( sources_nms
 cuda_add_library( ${target_nms} ${sources_nms} )
 
 ################################################################################
+# nonmaxsupp
+################################################################################
+set( target_test testlibs )
+set( sources_test
+  ${PROJECT_SOURCE_DIR}/test-code.cu
+  )
+
+cuda_add_library( ${target_test} ${sources_test} )
+
+################################################################################
 ################################################################################
 ##
 ## EXECUTABLES
@@ -69,6 +79,9 @@ set( canny_serial_libs
   ${target_filters}
   ${target_otsu}
   ${target_nms}
+
+  # TODO - uncomment to bypass phases and use alternate test paths
+  #${target_test}
   ${WBLIB} 
   )
 
