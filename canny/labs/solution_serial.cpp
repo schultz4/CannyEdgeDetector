@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
 
 	// Calculate strong, weak, and non edges using thresholds
-	threshold_detection_serial(BlurImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
+	threshold_detection_serial(NmsImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
 
 	// Connect edges by connecting weak edges to strong edges
 	edge_connection_serial(weakEdgeImage, edgeImage, imageWidth, imageHeight);
@@ -144,6 +144,8 @@ int main(int argc, char *argv[]) {
   //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
   memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
 
   //FILE *testThin = fopen("nmsThin.txt", "w");
   //for(int x = 0; x < imageWidth; ++x)
