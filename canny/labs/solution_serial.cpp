@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
   nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
-	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
+	Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
@@ -143,9 +143,9 @@ int main(int argc, char *argv[]) {
   //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
 
   //FILE *testThin = fopen("nmsThin.txt", "w");
   //for(int x = 0; x < imageWidth; ++x)
