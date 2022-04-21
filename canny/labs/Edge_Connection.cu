@@ -6,11 +6,10 @@
 void threshold_detection_serial(float *image, float *weak_img, float *edges_img, 
                         double thresh_high, int width, int height) {
 
-    //Define lower threshold from higher threshold                       
-    float thresh_low = thresh_high / 2;
+    //Define lower threshold from higher threshold                      
+    double thresh_low = thresh_high / 2;
 
 	
-
      //Loop to all pixels in image
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -163,14 +162,46 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
     }
 }
 
-/*
+__global__ void thresh_detection_shared(float *image, float *weak_img, float *edge_img, float *thresh_high,
+                                        int width, int height) {
+
+    // Set lower threshold from high threshold
+    float thresh_low = thresh_high[0] / 2;
+
+    // Set up thread ID
+    int Col = threadIdx.x + blockIdx.x * blockDim.x;
+    int Row = threadIdx.y + blockIdx.y * blockDim.y;
+
+    // Go through all of the pixels and mark them as edge, non edge, or weak edge
+    if ((Col < width) && (Row < height)) {
+
+        // Edge pixels
+        if (image[Row*width+Col] >= thresh_high[0]){
+            edge_img[Row*width+Col] = 1;
+            weak_img[Row*width+Col] = 0;
+
+        // Weak pixels
+        } else if (image[Row*width+Col] < thresh_high[0] && image[Row*width+Col] >= thresh_low) {
+            edge_img[Row*width+Col] = 0;
+            weak_img[Row*width+Col] = 1;
+
+        // Non pixels
+        } else if (image[Row*width+Col] < thresh_low){
+            edge_img[Row*width+Col] = 0;
+            weak_img[Row*width+Col] = 0;
+        }
+    }
+}
+
+
+
 __global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height) {
 
     // Set Tile wiidth
-    int TILE_WIDTH = 16;
+    const int TILE_WIDTH = 16;
 
     // Size of edge screach
-    int edge_size = 1;
+    const int edge_size = 1;
 
     // Set up thread ID
     int bx = blockIdx.x;
@@ -187,7 +218,8 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
 
         // Allocate shared memory
         // Has an extra pixel on each side of the tile for neibouring image seach
-        __shared__ float chuck[TILE_WIDTH + (2 * edge_size)][TILE_WIDTH + (2 * edge_size)];
+        __shared__ float edge_chunk[TILE_WIDTH + (2 * edge_size)][TILE_WIDTH + (2 * edge_size)];
+        __shared__ float weak_chunk[TILE_WIDTH + (2 * edge_size)][TILE_WIDTH + (2 * edge_size)];
 
         // Set row and column of image without extra boundary pixel
         int rel_row = Row - edge_size;
@@ -212,8 +244,6 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
             // Changed to add correct boundary
             if (weak_chunk[ty][tx] == 1) { 
                 int sum = 0;
-                float weak_value = 1;
-                float edge_value = 0;
 
                 // Scan adjacent pixels
                 for (int edge_row = -edge_size; edge_row < edge_size+1; ++edge_row) {
@@ -234,36 +264,10 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
     
                 // Change weak edge to strong edge
 		        if (sum > 0) {
-				    weak_img[rel_row * width + rel_height]= 0;
-	                edge_img[rel_row * width + rel_height]= 1; 
+				    weak_img[rel_row * width + rel_col]= 0;
+	                edge_img[rel_row * width + rel_col]= 1; 
                 }
             }
-			// Subtract center pixel from sum
-			sum = sum - edge_img[Row * width + Col];
-				
-		    if (sum > 0)
-			{
-				weak_img[Row * width + Col] = 0;
-	            edge_img[Row * width + Col] = 1;  
-	        }
-
-                    if (curRow > -1 && curRow < height && curCol > -1 && curCol < width) 
-					{
-						// Sum all pixels in 3x3 neighborhood
-                        sum += edge_img[curRow * width + curCol];
-                    }
-                }
-            }
-            				// Subtract center pixel from sum
-			sum = sum - edge_img[numRow * width + numCol];
-			
-		    if (sum > 0)
-			{
-				weak_img[numRow * width + numCol] = 0;
-	            edge_img[numRow * width + numCol] = 1; 
-            } 
         }
     }
 }
-*/
-
