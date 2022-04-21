@@ -10,7 +10,8 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
 
 __global__ void thresh_detection_global(float *image, float *weak_img, float *edge_img, float *thresh_high, int width, int height);
 __global__ void edge_connection_global(float *weak_img, float *edge_img, int width, int height);
-//__global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height);
+__global__ void thresh_detection_shared(float *image, float *weak_img, float *edge_img, float *thresh_high, int width, int height);
+__global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height);
 
 #endif
 
