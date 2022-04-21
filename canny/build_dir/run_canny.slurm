@@ -51,7 +51,7 @@ PATHS[9]=$hw_path/CannyImage/Dataset/9;
 
 ## Uncomment vars below and run for memory report
 memcheck=""
-#memcheck="valgrind --tool=memcheck --leak-check=full "
+memcheck="valgrind --tool=memcheck --leak-check=full "
 
 ## Uncomment vars below and run for memory report
 cuda_memcheck=""
@@ -64,6 +64,8 @@ do
    imgOutFile=outputImg$((count)).ppm
    ${cuda_memcheck} ./CannyImage_Solution -f ${filter_size} -o ${hw_path}/CannyImage_output/gpu_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_$file 
    ${memcheck} ./CannyImage_Serial -f ${filter_size} -o ${hw_path}/CannyImage_output/serial_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_$file
+
+   /usr/bin/env/python timingReport.py ${hw_path}/CannyImage_output/serial_$file ${hw_path}/CannyImage_output/gpu_$file &> ${hw_path}/CannyImage_output/timing-report.txt
    count=$((count+1))
 done
 
