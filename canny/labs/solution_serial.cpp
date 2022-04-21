@@ -79,6 +79,10 @@ int main(int argc, char *argv[]) {
     // Start memory allocation timer
     wbTime_start(GPU, "Doing memory allocation");
 
+    // Fill the gaussian filter
+    double *filter    = (double *)calloc(filterSize*filterSize, sizeof(double));
+    populate_blur_filter(filter, filterSize);
+
 	// Allocate memory on host
   GrayImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	BlurImageData     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
@@ -88,8 +92,6 @@ int main(int argc, char *argv[]) {
 	weakEdgeImage     = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 	edgeImage         = (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
-	// Create filter skeleton
-	double *filter    = (double *)calloc(filterSize*filterSize, sizeof(double));
 
   // Initialize memory for the output image
   // Note - input image is 3 channels. Other phases only have 1 channel
@@ -113,32 +115,44 @@ int main(int argc, char *argv[]) {
 	// Start computation timer
 	wbTime_start(Compute, "Doing the computation");
 
-	// Fill the gaussian filter
-	populate_blur_filter(filter, filterSize);
-
+<<<<<<< HEAD
   // GrayImageData Serial
+    wbTime_start(Compute, "ColorToGrayscale computation");
   ColorToGrayscaleSerial(hostInputImageData, GrayImageData, imageWidth, imageHeight);
+    wbTime_stop(Compute, "ColorToGrayscale computation");
 
 	// Blur image using Gaussian Kernel
+    wbTime_start(Compute, "Conv2D computation");
 	Conv2DSerial(GrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
 
 	// Calculate gradient using Sobel Operators
+    wbTime_start(Compute, "GradientSobelS computation");
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
 
   // Suppress non-maximum pixels along gradient
+    wbTime_start(Compute, "Non-maximum Suppression computation");
   nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
+    wbTime_stop(Compute, "Non-maximum Suppression computation");
 
 	// Calculate histogram of blurred image
+    wbTime_start(Compute, "Histogram computation");
 	Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
+    wbTime_stop(Compute, "Histogram computation");
 
-	// Calculate threshold using Otsu's Method
-	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
+    // Calculate threshold using Otsu's Method
+    wbTime_start(Compute, "Otsu's computation");
+    double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
+    wbTime_stop(Compute, "Otsu's computation");
 
-	// Calculate strong, weak, and non edges using thresholds
-	threshold_detection_serial(NmsImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
+    // Calculate strong, weak, and non edges using thresholds
+    wbTime_start(Compute, "Threshold Detection computation");
+    threshold_detection_serial(NmsImageData, weakEdgeImage, edgeImage, thresh, imageWidth, imageHeight);
+    wbTime_stop(Compute, "Threshold Detection computation");
 
-	// Connect edges by connecting weak edges to strong edges
-	edge_connection_serial(weakEdgeImage, edgeImage, imageWidth, imageHeight);
+    // Connect edges by connecting weak edges to strong edges
+    wbTime_start(Compute, "Edge connection computation");
+    edge_connection_serial(weakEdgeImage, edgeImage, imageWidth, imageHeight);
+    wbTime_stop(Compute, "Edge connection computation");
 
 	// Stop computation timer
 	wbTime_stop(Compute, "Doing the computation");
@@ -195,9 +209,6 @@ int main(int argc, char *argv[]) {
     printf("Row=%ld of Gaussian filter = ",row);
     for(size_t col = 0; col < filterSize; ++col)
     {
-        printf("Row=%ld of Gaussian filter = ",row);
-        for(size_t col = 0; col < filterSize; ++col)
-        {
             printf("%f ", filter[col + filterSize*row]);
         }
         printf("\n");
