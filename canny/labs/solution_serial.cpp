@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
   nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
 
 	// Calculate histogram of blurred image
-	Histogram_Sequential(BlurImageData, histogram, imageWidth, imageHeight);
+	Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
 
 	// Calculate threshold using Otsu's Method
 	double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);

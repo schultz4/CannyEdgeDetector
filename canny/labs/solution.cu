@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
   wbCheck(cudaDeviceSynchronize());
 
   //NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
-  NaiveHistogram<<<GridDim,BlockDim>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
+  NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
 
   wbCheck(cudaDeviceSynchronize());
 
@@ -306,9 +306,9 @@ int main(int argc, char *argv[])
   //memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
 
   // For Host execution
   //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
