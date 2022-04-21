@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
     wbTime_start(Compute, "Otsu's computation");
   NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
-    wbTime_start(Compute, "Otsu's computation");
+    wbTime_stop(Compute, "Otsu's computation");
   
   	// Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
@@ -394,13 +394,13 @@ int main(int argc, char *argv[])
   free(filter);
 
   // Destroy CPU memory
-  free(BlurImageData);
-  free(GradMagData);
-  free(GradPhaseData);
-  free(NmsImageData);
-  free(histogram);
-  free(EdgeData);
-  free(WeakEdgeData);
+  //free(BlurImageData);
+  //free(GradMagData);
+  //free(GradPhaseData);
+  //free(NmsImageData);
+  //free(histogram);
+  //free(EdgeData);
+  //free(WeakEdgeData);
 
   // Destroy images
   wbImage_delete(outputImage);
