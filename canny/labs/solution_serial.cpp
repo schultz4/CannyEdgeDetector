@@ -115,7 +115,6 @@ int main(int argc, char *argv[]) {
 	// Start computation timer
 	wbTime_start(Compute, "Doing the computation");
 
-<<<<<<< HEAD
   // GrayImageData Serial
     wbTime_start(Compute, "ColorToGrayscale computation");
   ColorToGrayscaleSerial(hostInputImageData, GrayImageData, imageWidth, imageHeight);

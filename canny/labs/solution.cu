@@ -5,6 +5,9 @@
 #include "non_max_supp.h"
 #include "Edge_Connection.h"
 
+// Use for bypassing phases for testing and debug printing
+//#include "test-code.h"
+
 #define wbCheck(stmt)                                                     \
   do {                                                                    \
     cudaError_t err = stmt;                                               \
@@ -104,6 +107,11 @@ int main(int argc, char *argv[])
   // Host Memory Initialization //
   ////////////////////////////////
 
+  // Start total program timer
+  wbTime_start(GPU, "Doing Computation (memory + compute)");
+
+  // Start memory allocation timer
+  wbTime_start(GPU, "Doing memory allocation");
 
   // Allocate memory on host
   hostGrayImageData     = (float *)malloc(imageHeight*imageWidth*sizeof(float));
@@ -115,12 +123,12 @@ int main(int argc, char *argv[])
   hostWeakEdgeData 	  = (float *)malloc(imageHeight*imageWidth*sizeof(float));
 
   // Allocate memory for serial filtering and initialize to 0
-  BlurImageData       = (float *)calloc(imageHeight*imageWidth, sizeof(float));
-  GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-  GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-  NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-  EdgeData	 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-  WeakEdgeData   		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //BlurImageData       = (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //EdgeData	 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
+  //WeakEdgeData   		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
 
   // Allocate memory on host and initialize to 0
   hostHistogram = (unsigned int *)malloc(256*sizeof(unsigned int));
@@ -143,7 +151,6 @@ int main(int argc, char *argv[])
 
   // Fill the gaussian filter
   populate_blur_filter(filter, filterSize);
-  wbCheck(cudaMemcpy(deviceFilter, filter, filterSize*filterSize*sizeof(double), cudaMemcpyHostToDevice));
 
   // ?????
   //int filterSize = (int)FILTERSIZE;
@@ -154,11 +161,6 @@ int main(int argc, char *argv[])
   //////////////////////////////////
 
 
-  // Start total program timer
-  wbTime_start(GPU, "Doing GPU Computation (memory + compute)");
-
-  // Start memory allocation timer
-  wbTime_start(GPU, "Doing GPU memory allocation");
 
   // Allocate memory on device
   wbCheck(cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float)));
@@ -178,13 +180,15 @@ int main(int argc, char *argv[])
   wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
 
   // Stop memory allocation timer
-  wbTime_stop(GPU, "Doing GPU memory allocation");
+  wbTime_stop(GPU, "Doing memory allocation");
 
   // Start memory copy timer
   wbTime_start(Copy, "Copying data to the GPU");
 
   // Copy input image from host to device
+  wbCheck(cudaMemcpy(deviceFilter, filter, filterSize*filterSize*sizeof(double), cudaMemcpyHostToDevice));
   wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels*imageWidth*imageHeight*sizeof(float), cudaMemcpyHostToDevice));
+  wbTime_stop(Copy, "Copying data to the GPU");
 
 
   ///////////////////
@@ -205,47 +209,56 @@ int main(int argc, char *argv[])
   dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
 
   // Call RGB to grayscale conversion kernel
+    wbTime_start(Compute, "ColorToGrayscale computation");
   ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "ColorToGrayscale computation");
 
   // Call image burring kernel
+    wbTime_start(Compute, "Conv2D computation");
   Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-
   wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "Conv2D computation");
 
   // Call sobel filtering kernel
+    wbTime_start(Compute, "GradientSobelS computation");
   GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, filterSize); 
-
   wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "GradientSobelS computation");
 
   // Suppress non-maximum pixels along gradient
+    wbTime_start(Compute, "Non-maximum Suppression computation");
   nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
   wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "Non-maximum Suppression computation");
 
+    wbTime_start(Compute, "Histogram computation");
   //NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
   NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
-
   wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "Histogram computation");
 
 
 	// Stop computation timer
-	wbTime_stop(Compute, "Doing the computation on the GPU");
+    wbTime_start(Compute, "Otsu's computation");
   NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
-
   wbCheck(cudaDeviceSynchronize());
+    wbTime_start(Compute, "Otsu's computation");
   
   	// Threshold detection global memory kernal
+    wbTime_start(Compute, "Threshold Detection computation");
 	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
-
 	wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "Threshold Detection computation");
 
 	// Global Memory edge connection kernal
+    wbTime_start(Compute, "Edge connection computation");
 	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
-
 	wbCheck(cudaDeviceSynchronize());
+    wbTime_stop(Compute, "Edge connection computation");
 
   // Stop computation timer
-  wbTime_stop(Compute, "Doing the computation on the GPU");
+  wbTime_stop(Compute, "Doing the computation");
 
 
   ////////////////////
@@ -270,34 +283,7 @@ int main(int argc, char *argv[])
   wbTime_stop(Copy, "Copying data from the GPU");
 
   // Stop total program timer
-  wbTime_stop(GPU, "Doing GPU Computation (memory + compute)");
-
-  ////////////////////
-  // Host Execution //
-  ////////////////////
-
-  // Blur image using Gaussian Kernel
-  Conv2DSerial(hostGrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
-
-  // Calculate gradient using Sobel Operators
-  //GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
-
-  // Suppress non-maximum pixels along gradient
-  //nms(GradMagData, NmsImageData, GradPhaseData, imageHeight, imageWidth);
-
-  // Calculate histogram of blurred image
-  //Histogram_Sequential(NmsImageData, histogram, imageWidth, imageHeight);
-
-  // Calculate threshold using Otsu's Method
-  //double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
-
-  // Perorm hysteresis on NMS image
-  //threshold_detection_serial(NmsImageData, WeakEdgeData, EdgeData, thresh, imageWidth, imageHeight);
-
-  // Link edges
-  //edge_connection_serial(WeakEdgeData, EdgeData, imageWidth, imageHeight);
-
-
+  wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
   ////////////////////////
   // Logging and Output //
@@ -331,7 +317,7 @@ int main(int argc, char *argv[])
   ////////////////////
   // Debugging Info //
   ////////////////////
-
+#if (PRINT_DEBUG)
 
   // Print info
   printf("\n");
@@ -361,22 +347,22 @@ int main(int argc, char *argv[])
     }
     printf("\n");
   }
-
-  printf("Blurred Image[0] = %f\n",BlurImageData[0]*255);
-  printf("Blurred [25] = %f\n", BlurImageData[25]*255);
-  printf("Blurred Image[290] = %f\n",BlurImageData[290]*255);
-  printf("Gradient magnitude at [0] = %f\n",GradMagData[0]);
-  printf("Gradient magnitude at [20] = %f\n",GradMagData[20]);
-  printf("Gradient magnitude at [9000] = %f\n",GradMagData[9000]);
-  printf("Gradient phase at [0] = %f\n",GradPhaseData[0]);
-  printf("Gradient phase at [20] = %f\n",GradPhaseData[20]);
-  printf("Gradient phase at [290] = %f\n",GradPhaseData[290]);
-  printf("NMS at [0] = %f\n",NmsImageData[0]);
-  printf("NMS at [20] = %f\n",NmsImageData[20]);
-  printf("NMS at [130] = %f\n",NmsImageData[130]);
-  printf("NMS at [131] = %f\n",NmsImageData[131]);
-  //printf("Otsu's Threshold = %f\n", thresh);
-  printf("\n");
+#endif
+  //printf("Blurred Image[0] = %f\n",BlurImageData[0]*255);
+  //printf("Blurred [25] = %f\n", BlurImageData[25]*255);
+  //printf("Blurred Image[290] = %f\n",BlurImageData[290]*255);
+  //printf("Gradient magnitude at [0] = %f\n",GradMagData[0]);
+  //printf("Gradient magnitude at [20] = %f\n",GradMagData[20]);
+  //printf("Gradient magnitude at [9000] = %f\n",GradMagData[9000]);
+  //printf("Gradient phase at [0] = %f\n",GradPhaseData[0]);
+  //printf("Gradient phase at [20] = %f\n",GradPhaseData[20]);
+  //printf("Gradient phase at [290] = %f\n",GradPhaseData[290]);
+  //printf("NMS at [0] = %f\n",NmsImageData[0]);
+  //printf("NMS at [20] = %f\n",NmsImageData[20]);
+  //printf("NMS at [130] = %f\n",NmsImageData[130]);
+  //printf("NMS at [131] = %f\n",NmsImageData[131]);
+  ////printf("Otsu's Threshold = %f\n", thresh);
+  //printf("\n");
 
 
   //////////////
