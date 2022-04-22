@@ -138,7 +138,9 @@ wbArg_t wbArg_read(int argc, char **argv) {
     } else if (wbString_startsWith(argv[ii], "-f")) {
       // TODO - set filter size here
       char *size = parseString(argv[++ii]);
+#if (PRINT_DEBUG)
       printf("DEBUG: filter size=%s\n", size);
+#endif
       wbArg_setInputFilterSize(arg, atoi(size)); 
     } else if (argv[ii][0] == '-') {
       wbLog(ERROR, "Unexpected program option ", argv[ii]);
