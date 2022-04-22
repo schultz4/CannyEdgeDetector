@@ -21,6 +21,7 @@
 
 int main(int argc, char *argv[])
 {
+  cudaFree(0);
 
   //////////////////////////////
   // Parameter Initialization //
