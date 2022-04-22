@@ -61,6 +61,10 @@ if (UNIX)
 	set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11")
 endif ()
 
+if (WIN32)
+    set(CUDA_NVCC_FLAGS "-D_USE_MATH_DEFINES ${CUDA_NVCC_FLAGS}")
+endif()
+
 # Select the correct host compiler on OS X
 if (APPLE)
     if (${CMAKE_SYSTEM_VERSION} LESS 12.0)
