@@ -4,6 +4,10 @@
 //  gradient descent = GradientSobel
 #include "filters.h"
 
+
+#define TILESIZE 16
+#define BLOCKSIZE (TILESIZE + FILTERSIZE - 1)
+
 void populate_blur_filter(double *outFilter, size_t filterEdgeLen)
 {
     //double scaleVal = 1;
@@ -75,7 +79,120 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
    }
 }
 
+__global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
+    int halfFilter = (int)filterSize/2;
+    int tx = threadIdx.x; bx = blockIdx.x;
+    int ty = threadIdx.y; by = blockIdx.y;
 
+    // first make a shared memory filter
+    __shared__ double sharedfilter[FILTERSIZE][FILTERSIZE]    
+    for(i = 0; i < filterSize; i++) {
+        for(j=0; j < filterSize; j++) {
+            sharedfilter[i][j] = filter[i * column + j]
+        }
+    }
+    
+    // then do a tiled convolution
+    __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
+    int row = ty + by * TILESIZE;
+    int col = tx + bx * TILESIZE;
+    int startrow = row - halfFilter;
+    int startcol = col - halfFilter;    
+
+ 
+    // load the tile elements
+    if(startrow >= 0 && startrow < height && startcol >= 0 && startcol < width) {
+        tile[ty][tx] = inImg[startrow*width+startcol];
+    } else {
+        tile[ty][tx] = 0.0f;
+    }
+    // then wait for the whole tile to load 
+    __syncthreads();
+
+    // then compute if youre in the tile
+    if (tx < TILESIZE && ty < TILESIZE) {
+        float pval = 0.0;
+        for(int i = 0; i < filterSize; i++) {
+            for(int j = 0; j < filterSize; j++){
+                 pval += tile[i+ty][j+tx] * sharedfilter[i][j];        
+             }
+        }
+        
+        // after every iteration then write to the output
+        if(row < height && col < width) {
+            outImg[row * width + col] = pval;
+        }
+    }
+
+    // then make sure the threads are all done
+    __syncthreads();
+}
+
+__global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
+
+    //int row = blockIdx.y * blockDim.y + threadIdx.y;
+    //int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // To detect horizontal lines, G_x.
+    const int fmat_x[3][3] = {
+      {-1, 0, 1},
+      {-2, 0, 2},
+      {-1, 0, 1}
+    };
+    // To detect vertical lines, G_y
+    const int fmat_y[3][3]  = {
+      {-1, -2, -1},
+      {0,   0,  0},
+      {1,   2,  1}
+    };
+
+    // set up the tile
+    int halfFilter = (int)filterSize/2;
+    int tx = threadIdx.x; bx = blockIdx.x;
+    int ty = threadIdx.y; by = blockIdx.y;
+
+    // do a tiled convolution
+    __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
+    int row = ty + by * TILESIZE;
+    int col = tx + bx * TILESIZE;
+    int startrow = row - halfFilter;
+    int startcol = col - halfFilter;
+
+    // load the tile elements
+    if(startrow >= 0 && startrow < height && startcol >= 0 && startcol < width) {
+        tile[ty][tx] = inImg[startrow*width+startcol];
+    } else {
+        tile[ty][tx] = 0.0f;
+    }
+    // then wait for the whole tile to load
+    __syncthreads();
+
+
+    // now do the filtering
+    double sumx = 0;
+    double sumy = 0;
+    //// DO THE SOBEL FILTERING ///////////
+
+    // boundary check if it's in the image
+    if(ty < TILEWIDTH && tx < TILEWIDTH && row < height && col < width) {
+
+        // now do the filtering
+        for (int j = 0; j < filterSize; j++) {
+            for (int k = 0; k < filterSize; k++) {
+                sumy += tile[j+ty][k+tx] * fmat_y[j][k];
+                sumx += tile[j+ty][k+tx] * fmat_x[j][k];
+            }
+        }
+
+        // then write to output for that element
+        if (row < height && col < width) {
+            // now calculate the sobel output and gradients
+            sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
+            gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
+
+	}
+    }
+}
 
 // the gaussian blur is just a conv2d with a filter
 __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
@@ -109,7 +226,6 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 }
 
 __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
-  //int filterSize = (int)FILTERSIZE;
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
