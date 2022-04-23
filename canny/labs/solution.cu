@@ -331,6 +331,12 @@ int main(int argc, char *argv[])
   printf("Histogram[45] = %u\n",histogram[45]);
   printf("Histogram[56] = %u\n",histogram[56]);
   printf("Histogram[255] = %u\n",histogram[255]);
+  //printf("Host Histogram[0] = %u\n",hostHistogram[0]);
+	//printf("Host Histogram[1] = %u\n",hostHistogram[1]);
+	//printf("Host Histogram[20] = %u\n",hostHistogram[20]);
+	//printf("Host Histogram[49] = %u\n",hostHistogram[49]);
+	//printf("Host Histogram[56] = %u\n",hostHistogram[56]);
+	//printf("Host Histogram[255] = %u\n",hostHistogram[255]);
   printf("Image[0] = %f\n",hostGrayImageData[0]);
   printf("Image[1] = %f\n",hostGrayImageData[1]);
   printf("Image[36] = %f\n",hostGrayImageData[36]);
@@ -362,7 +368,9 @@ int main(int argc, char *argv[])
   //printf("NMS at [20] = %f\n",NmsImageData[20]);
   //printf("NMS at [130] = %f\n",NmsImageData[130]);
   //printf("NMS at [131] = %f\n",NmsImageData[131]);
-  ////printf("Otsu's Threshold = %f\n", thresh);
+	//printf("Otsu's Threshold = %f\n", thresh);
+	//printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
+	//printf("Number of histogram differences = %u\n", diff_count);
   //printf("\n");
 
 
