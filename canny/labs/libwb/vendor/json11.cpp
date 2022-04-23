@@ -188,6 +188,35 @@ protected:
   }
 };
 
+#ifdef _WIN32
+template <Json::Type tag>
+class Value<tag, std::nullptr_t> : public JsonValue {
+protected:
+    // Constructors
+    explicit Value(const std::nullptr_t& value) : m_value(value) {
+    }
+    explicit Value(std::nullptr_t&& value) : m_value(move(value)) {
+    }
+
+    // Get type tag
+    Json::Type type() const override {
+        return tag;
+    }
+
+    // Comparisons
+    bool equals(const JsonValue* other) const override {
+        return true;
+    }
+    bool less(const JsonValue* other) const override {
+        return false;
+    }
+
+    const std::nullptr_t m_value;
+    void dump(string& out) const override {
+        json11::dump(m_value, out);
+    }
+};
+#endif
 class JsonDouble final : public Value<Json::NUMBER, double> {
   double number_value() const override {
     return m_value;
