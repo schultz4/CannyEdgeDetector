@@ -198,7 +198,7 @@ __global__ void thresh_detection_shared(float *image, float *weak_img, float *ed
 __global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height) {
 
     // Set Tile wiidth
-    const int TILE_WIDTH = 16;
+    const int TILE_WIDTH = 14;
 
     // Size of edge screach
     const int edge_size = 1;
