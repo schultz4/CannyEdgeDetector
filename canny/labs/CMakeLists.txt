@@ -62,6 +62,7 @@ if (UNIX)
 endif ()
 
 if (WIN32)
+    message("Setting -D_USE_MATH_DEFINES")
     set(CUDA_NVCC_FLAGS "-D_USE_MATH_DEFINES ${CUDA_NVCC_FLAGS}")
 endif()
 
@@ -87,7 +88,7 @@ if (APPLE)
 endif ()
 
 # Add debugging to CUDA NVCC flags (for NVidia's NSight tools)
-set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
+set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G -g --keep")
 
 # Set the correct linker options on UNIX platforms
 # -lpthread inserted by ali akoglu  for compatiblity with elgato
