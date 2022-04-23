@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
 
   // Suppress non-maximum pixels along gradient
     wbTime_start(Compute, "Non-maximum Suppression computation");
-  nms_global<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
+  nms_opt<<<GridDim,BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
@@ -233,6 +233,7 @@ int main(int argc, char *argv[])
 	// Stop computation timer
     wbTime_start(Compute, "Otsu's computation");
   NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
+  //OptimizedOtsu<<<1,256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Otsu's computation");
   
@@ -345,24 +346,24 @@ int main(int argc, char *argv[])
     }
     printf("\n");
   }
-#endif
-  //printf("Blurred Image[0] = %f\n",BlurImageData[0]*255);
-  //printf("Blurred [25] = %f\n", BlurImageData[25]*255);
-  //printf("Blurred Image[290] = %f\n",BlurImageData[290]*255);
-  //printf("Gradient magnitude at [0] = %f\n",GradMagData[0]);
-  //printf("Gradient magnitude at [20] = %f\n",GradMagData[20]);
-  //printf("Gradient magnitude at [9000] = %f\n",GradMagData[9000]);
-  //printf("Gradient phase at [0] = %f\n",GradPhaseData[0]);
-  //printf("Gradient phase at [20] = %f\n",GradPhaseData[20]);
-  //printf("Gradient phase at [290] = %f\n",GradPhaseData[290]);
-  //printf("NMS at [0] = %f\n",NmsImageData[0]);
-  //printf("NMS at [20] = %f\n",NmsImageData[20]);
-  //printf("NMS at [130] = %f\n",NmsImageData[130]);
-  //printf("NMS at [131] = %f\n",NmsImageData[131]);
+  //printf("Blurred Image[0] = %f\n",hostBlurImageData[0]*255);
+  //printf("Blurred [25] = %f\n", hostBlurImageData[25]*255);
+  //printf("Blurred Image[290] = %f\n",hostBlurImageData[290]*255);
+  //printf("Gradient magnitude at [0] = %f\n",hostGradMagData[0]);
+  //printf("Gradient magnitude at [20] = %f\n",hostGradMagData[20]);
+  //printf("Gradient magnitude at [9000] = %f\n",hostGradMagData[9000]);
+  //printf("Gradient phase at [0] = %f\n",hostGradPhaseData[0]);
+  //printf("Gradient phase at [20] = %f\n",hostGradPhaseData[20]);
+  //printf("Gradient phase at [290] = %f\n",hostGradPhaseData[290]);
+  //printf("NMS at [0] = %f\n",hostNmsImageData[0]);
+  //printf("NMS at [20] = %f\n",hostNmsImageData[20]);
+  //printf("NMS at [130] = %f\n",hostNmsImageData[130]);
+  //printf("NMS at [131] = %f\n",hostNmsImageData[131]);
 	//printf("Otsu's Threshold = %f\n", thresh);
-	//printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
+	printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
 	//printf("Number of histogram differences = %u\n", diff_count);
   //printf("\n");
+#endif
 
 
   //////////////
