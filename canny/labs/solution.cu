@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 
   // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-  Conv2DTiled<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
   memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
 

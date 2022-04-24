@@ -158,10 +158,10 @@ int main(int argc, char *argv[]) {
 
   // Copy image data for output image (choose 1 - can only log one at a time for now
   //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
-  memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
+  //memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
 

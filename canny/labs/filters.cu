@@ -9,58 +9,67 @@
 #define TILESIZE  BLOCKSIZE - FILTERSIZE + 1 
 
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
-    int halfFilter = (int)filterSize/2;
-    int tx = threadIdx.x; int bx = blockIdx.x;
-    int ty = threadIdx.y; int by = blockIdx.y;
-    //int bdx = blockDim.x; int bdy = blockDim.y;
+  int halfFilter = (int)filterSize/2;
+  int tx = threadIdx.x; int bx = blockIdx.x;
+  int ty = threadIdx.y; int by = blockIdx.y;
+  //int bdx = blockDim.x; int bdy = blockDim.y;
 
-    // first make a shared memory filter
-    double sharedfilter[FILTERSIZE][FILTERSIZE];    
-    for(int i = 0; i < filterSize; i++) {
-        for(int j=0; j < filterSize; j++) {
-            sharedfilter[i][j] = filter[i * width + j];
-        }
+  // first make a shared memory filter
+  double sharedfilter[FILTERSIZE][FILTERSIZE];    
+  for(int i = 0; i < filterSize; i++) {
+    for(int j=0; j < filterSize; j++) {
+      sharedfilter[i][j] = filter[i * width + j];
     }
-    
-    // then do a tiled convolution
-    __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
-    int row = ty + by * TILESIZE;
-    int col = tx + bx * TILESIZE;
-    int startrow = row - halfFilter;
-    int startcol = col - halfFilter;    
+  }
 
- 
-    // load the tile elements
-    if(startrow >= 0 && startrow < height && startcol >= 0 && startcol < width) {
-        tile[ty][tx] = inImg[startrow*width+startcol];
-    } else {
-        tile[ty][tx] = 0.0f;
-    }
-    // then wait for the whole tile to load 
-    __syncthreads();
+  // then do a tiled convolution
+  __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
+  int row = ty + by * TILESIZE;
+  int col = tx + bx * TILESIZE; 
+  int startrow = row - halfFilter;
+  int startcol = col - halfFilter;    
 
-    float pval = 0.0;
 
-    int cornerrow = ty - FILTERSIZE;
-    int cornercol = tx - FILTERSIZE;
-    // then compute if youre in the tile
-    if (tx < TILESIZE && ty < TILESIZE && row < height && col < width) {
-        for(int i = 0; i < filterSize; i++) {
-            for(int j = 0; j < filterSize; j++){
-                int currentrow = i + cornerrow;
-		int currentcol = j + cornercol;
-		if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width) {
-		pval += tile[currentrow][currentcol] * sharedfilter[j][i];        
-		}
-             }
-        }
-        __syncthreads();  
-        // after every iteration then write to the output
-        outImg[row * width + col] = pval;
-    }
+  // load the tile elements
+  if(startrow >= 0 && startrow < height && startcol >= 0 && startcol < width) {
+    tile[ty][tx] = inImg[startrow*width+startcol];
+  } else {
+    tile[ty][tx] = 0.0f;
+  }
+  // then wait for the whole tile to load 
+  __syncthreads();
 
-    // then make sure the threads are all done
-    //__syncthreads();
+  // after every iteration then write to the output
+  if (row < width && col < height && row >= 0 && col >= 0)
+  {
+    outImg[row * width + col] = tile[ty+1][tx+1];
+  }
+  //float pval = 0.0;
+
+  //int cornerrow = ty + 1;// - FILTERSIZE/2;// - FILTERSIZE;
+  //int cornercol = tx + 1;// - FILTERSIZE/2;// - FILTERSIZE;
+  //// then compute if youre in the tile
+  //if (tx < TILESIZE && ty < TILESIZE && row < height && col < width) {
+  //  for(int i = 0; i < filterSize; i++) {
+  //    for(int j = 0; j < filterSize; j++){
+  //      int currentrow = i + cornerrow;
+  //      int currentcol = j + cornercol;
+  //      if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width) {
+  //        pval += tile[currentrow][currentcol] * sharedfilter[j][i];        
+  //      }
+  //    }
+  //  }
+  //}
+  //__syncthreads();  
+
+  //// after every iteration then write to the output
+  //if (row < width && col < height && row >= 0 && col >= 0)
+  //{
+  //  outImg[row * width + col] = pval;
+  //}
+
+  //// then make sure the threads are all done
+  ////__syncthreads();
 }
 
 __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
