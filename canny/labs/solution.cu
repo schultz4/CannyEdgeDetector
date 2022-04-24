@@ -224,8 +224,10 @@ int main(int argc, char *argv[])
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
     wbTime_start(Compute, "Histogram computation");
+    dim3 histGrid((imageWidth * imageHeight + 512 - 1)/512);
+    dim3 histBlock(512);
   //NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
-  NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+  NaiveHistogram<<<histGrid,histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 
@@ -290,7 +292,7 @@ int main(int argc, char *argv[])
   //memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
   //memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
-  //memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
+  memcpy(outData, hostEdgeData, imageHeight*imageWidth*sizeof(float));
 
   // For Host execution
   //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));

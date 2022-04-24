@@ -209,7 +209,8 @@ int main(int argc, char *argv[])
 
   // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-  Conv2DOpt<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  //Conv2DOpt<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
@@ -226,8 +227,10 @@ int main(int argc, char *argv[])
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
     wbTime_start(Compute, "Histogram computation");
-  //NaiveHistogram<<<(imageWidth * imageHeight + 512 - 1)/512, 512>>>(deviceGrayImageData, deviceHistogram, imageWidth, imageHeight);
-  NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+    dim3 histGrid((imageWidth * imageHeight + 512 - 1)/512);
+    dim3 histBlock(512);
+  NaiveHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+  //NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 

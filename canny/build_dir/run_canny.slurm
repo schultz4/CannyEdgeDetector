@@ -83,6 +83,11 @@ do
 
    echo
    python timingReport.py ${hw_path}/CannyImage_output/serial_$file ${hw_path}/CannyImage_output/gpu_$file ${hw_path}/CannyImage_output/opt_$file ${hw_path}/CannyImage_output/best_$file &> ${hw_path}/CannyImage_output/timing-report-img$((count)).txt
+
+   #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/gpu_$imgOutFile
+   #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/opt_$imgOutFile
+   #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/best_$imgOutFile
+
    count=$((count+1))
 done
 
