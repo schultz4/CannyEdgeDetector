@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
 
   // Allocate memory on host and initialize to 0
   hostHistogram = (unsigned int *)malloc(256*sizeof(unsigned int));
+  
 
   // Allocate memory on host for threshold
   hostThresh = (float *)malloc(sizeof(float));
@@ -164,11 +165,13 @@ int main(int argc, char *argv[])
   wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceHistogram, 256*sizeof(unsigned int)));
   wbCheck(cudaMalloc((void **)&deviceThresh, sizeof(float)));
-  wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float)));
-  wbCheck(cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float)));
+
 
   // Initialize cuda memory
   wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
+  wbCheck(cudaMemset(deviceWeakEdgeData, 0, imageWidth*imageHeight*sizeof(float)));
+  wbCheck(cudaMemset(deviceEdgeData, 0, imageWidth*imageHeight*sizeof(float)));
+
 
   // Stop memory allocation timer
   wbTime_stop(GPU, "Doing memory allocation");
@@ -239,13 +242,13 @@ int main(int argc, char *argv[])
   
   	// Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
-	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
+	thresh_detection_shared<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
 	wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Threshold Detection computation");
 
 	// Global Memory edge connection kernal
     wbTime_start(Compute, "Edge connection computation");
-	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
+	edge_connection_shared<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
 	wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Edge connection computation");
 
