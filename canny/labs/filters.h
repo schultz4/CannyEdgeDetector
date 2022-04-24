@@ -13,6 +13,8 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize); 
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize);
 __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize);
+__global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize);
+__global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize);
 #endif
 
 #endif // __FILTERS_H__

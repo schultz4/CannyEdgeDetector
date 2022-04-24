@@ -122,5 +122,12 @@ set(sources_opt_gpu
   ${PROJECT_SOURCE_DIR}/solution_opt.cu
   )
 
+set(target_canny_best_gpu CannyImage_Solution_Best)
+
+set(sources_best_gpu
+  ${PROJECT_SOURCE_DIR}/solution_bestcase.cu
+   )
 cuda_add_executable(${target_canny_opt_gpu} ${sources_opt_gpu})
-target_link_libraries( ${target_canny_opt_gpu} ${canny_gpu_libs} ) 
+cuda_add_executable(${target_canny_best_gpu} ${sources_best_gpu})
+target_link_libraries( ${target_canny_opt_gpu} ${canny_gpu_libs} )
+target_link_libraries(${target_canny_best_gpu} ${canny_gpu_libs} ) 

@@ -7,10 +7,94 @@
 #define FILTERSIZE 3
 #define BLOCKSIZE 16
 
+__global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int halfFilter = 1;//(int)filterSize/2;
+
+   // boundary check if it's in the image
+   if(row >= 0 && row < height && col >= 0 && col < width) {
+     float pixelvalue = 0;
+     int start_col = col - halfFilter;
+     int start_row = row - halfFilter;
+
+     // now do the filtering
+     for (int j = 0; j < filterSize; ++j) {
+       for (int k = 0; k < filterSize; ++k) {
+         int cur_row = start_row + j;
+         int cur_col = start_col + k;
+
+         // only count the ones that are inside the boundaries
+         if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width) {
+           pixelvalue += (int)(inImg[cur_row*width + cur_col]) * (float)filter[j * filterSize + k]; //[k][j];
+         }
+
+       }
+     }
+     __threadfence();     
+     outImg[row*width + col] = pixelvalue;
+   }
+
+}
+
+__global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
+    //int filterSize = (int)FILTERSIZE;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // To detect horizontal lines, G_x. 
+    const int fmat_x[3][3] = {
+        {-1, 0, 1},
+        {-2, 0, 2},
+        {-1, 0, 1}
+    };
+    // To detect vertical lines, G_y 
+    const int fmat_y[3][3]  = {
+        {-1, -2, -1},
+        {0,   0,  0},
+        {1,   2,  1}
+    };
+
+    // now do the filtering
+    // halfFitler is how many are on each side
+
+    // now do the filtering
+    // halfFitler is how many are on each side
+    int halfFilter = 1;//(int)filterSize/2;
+    float sumx = 0;
+    float sumy = 0;
+    //// DO THE SOBEL FILTERING ///////////
+
+    // boundary check if it's in the image
+    if(row >= 0 && row < height && col >= 0 && col < width) {
+        int start_col = col - halfFilter;
+        int start_row = row - halfFilter;
+
+        // now do the filtering
+        for (int j = 0; j < filterSize; ++j) {
+            for (int k = 0; k < filterSize; ++k) {
+                int cur_row = start_row + j;
+                int cur_col = start_col + k;
+
+                // only count the ones that are inside the boundaries
+                if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width ) {
+                    sumy += (int)inImg[cur_row*width + cur_col] * fmat_y[j][k];
+                    sumx += (int)inImg[cur_row*width + cur_col] * fmat_x[j][k];
+                }
+            }
+        }
+
+        // now calculate the sobel output and gradients
+        sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
+        gradientImg[row*width + col] = atan(__fdividef(sumx, sumy)) * __fdividef(180,M_PI); // the gradient calculateion
+    }
+
+}
+
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
     int halfFilter = 1;//(int)filterSize/2;
     // first make a shared memory filter
-    double sharedfilter[FILTERSIZE][FILTERSIZE];    
+    float sharedfilter[FILTERSIZE][FILTERSIZE];    
     for(int i = 0; i < filterSize; i++) {
         for(int j=0; j < filterSize; j++) {
             sharedfilter[i][j] = filter[i * filterSize + j];
@@ -23,7 +107,7 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
     //int bdx = blockDim.x; int bdy = blockDim.y;
  
     // then do a tiled convolution
-    __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
+    __shared__ int tile[BLOCKSIZE][BLOCKSIZE];
     int row = ty + by * TILESIZE;
     int col = tx + bx * TILESIZE;
     int startrow = row - halfFilter;
@@ -41,9 +125,9 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
 
     float pval = 0.0;
 
-    int num_pixel = 0;
-    int cornerrow = ty;// - halfFilter;
-    int cornercol = tx;// - halfFilter;
+    //int num_pixel = 0
+    int cornerrow = ty;
+    int cornercol = tx;;
     // then compute if youre in the tile
     if (tx < TILESIZE && ty < TILESIZE ) {
         for(int i = 0; i < filterSize; i++) {
@@ -52,14 +136,14 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
 		int currentcol = j + cornercol;
 		if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width) {
   		    pval += tile[currentrow][currentcol] * sharedfilter[j][i];   
-                    num_pixel++;
+                    //num_pixel++;
 		}
              }
         }
         __syncthreads();  
         // after every iteration then write to the output
         if(row < height && col < width)
-            outImg[row * width + col] = pval * (FILTERSIZE*FILTERSIZE/num_pixel);
+            outImg[row * width + col] = pval;// * __fdividef(FILTERSIZE*FILTERSIZE,num_pixel);
     }
 
     // then make sure the threads are all done
@@ -91,7 +175,7 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
     int ty = threadIdx.y; int by = blockIdx.y;
 
     // do a tiled convolution
-    __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
+    __shared__ int tile[BLOCKSIZE][BLOCKSIZE];
     int row = ty + by * TILESIZE;
     int col = tx + bx * TILESIZE;
     int startrow = row - halfFilter;
@@ -127,7 +211,8 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
         if (row < height && col < width) {
             // now calculate the sobel output and gradients
             sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
-            gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
+            double value = __fdividef(sumx,sumy);
+            gradientImg[row*width + col] = atan(value) * __fdividef(180,M_PI); // the gradient calculateion
 
 	}
     }
@@ -228,7 +313,7 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 
        }
      }
-     threadfence(); // was previously syncthreads
+     __threadfence();
      outImg[row*width + col] = pixelvalue;      
    }
 
@@ -280,7 +365,8 @@ __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg,
 
         // now calculate the sobel output and gradients
         sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
-        gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
+        
+	gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
     }
  
 }
