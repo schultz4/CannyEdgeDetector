@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 
   // Set x and y grid dimension 
   dim3 GridDim(((imageWidth+BlockDim.x-1)/BlockDim.x), ((imageHeight+BlockDim.y-1)/BlockDim.y));  
-
+  dim3 GridDiff(((imageWidth+14-1)/14), ((imageHeight+14-1)/14));
   // Call RGB to grayscale conversion kernel
     wbTime_start(Compute, "ColorToGrayscale computation");
   ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
@@ -207,13 +207,13 @@ int main(int argc, char *argv[])
 
   // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
   // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-  GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3); 
+  GradientSobelTiled<<<GridDiff, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3); 
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 

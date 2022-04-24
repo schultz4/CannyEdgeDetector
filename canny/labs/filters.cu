@@ -6,22 +6,22 @@
 
 #define FILTERSIZE 3
 #define BLOCKSIZE 16
-#define TILESIZE  BLOCKSIZE - FILTERSIZE + 1 
 
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
-    int halfFilter = (int)filterSize/2;
-    int tx = threadIdx.x; int bx = blockIdx.x;
-    int ty = threadIdx.y; int by = blockIdx.y;
-    //int bdx = blockDim.x; int bdy = blockDim.y;
-
+    int halfFilter = 1;//(int)filterSize/2;
     // first make a shared memory filter
     double sharedfilter[FILTERSIZE][FILTERSIZE];    
     for(int i = 0; i < filterSize; i++) {
         for(int j=0; j < filterSize; j++) {
-            sharedfilter[i][j] = filter[i * width + j];
+            sharedfilter[i][j] = filter[i * filterSize + j];
         }
     }
-    
+   
+    int TILESIZE = BLOCKSIZE - FILTERSIZE + 1;
+    int tx = threadIdx.x; int bx = blockIdx.x;
+    int ty = threadIdx.y; int by = blockIdx.y;
+    //int bdx = blockDim.x; int bdy = blockDim.y;
+ 
     // then do a tiled convolution
     __shared__ float tile[BLOCKSIZE][BLOCKSIZE];
     int row = ty + by * TILESIZE;
@@ -41,22 +41,25 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
 
     float pval = 0.0;
 
-    int cornerrow = ty - FILTERSIZE;
-    int cornercol = tx - FILTERSIZE;
+    int num_pixel = 0;
+    int cornerrow = ty;// - halfFilter;
+    int cornercol = tx;// - halfFilter;
     // then compute if youre in the tile
-    if (tx < TILESIZE && ty < TILESIZE && row < height && col < width) {
+    if (tx < TILESIZE && ty < TILESIZE ) {
         for(int i = 0; i < filterSize; i++) {
             for(int j = 0; j < filterSize; j++){
                 int currentrow = i + cornerrow;
 		int currentcol = j + cornercol;
 		if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width) {
-		pval += tile[currentrow][currentcol] * sharedfilter[j][i];        
+  		    pval += tile[currentrow][currentcol] * sharedfilter[j][i];   
+                    num_pixel++;
 		}
              }
         }
         __syncthreads();  
         // after every iteration then write to the output
-        outImg[row * width + col] = pval;
+        if(row < height && col < width)
+            outImg[row * width + col] = pval * (FILTERSIZE*FILTERSIZE/num_pixel);
     }
 
     // then make sure the threads are all done
@@ -68,6 +71,7 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
     //int row = blockIdx.y * blockDim.y + threadIdx.y;
     //int col = blockIdx.x * blockDim.x + threadIdx.x;
 
+    int TILESIZE = BLOCKSIZE - FILTERSIZE + 1;
     // To detect horizontal lines, G_x.
     const int fmat_x[3][3] = {
       {-1, 0, 1},
@@ -100,7 +104,7 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
         tile[ty][tx] = 0.0f;
     }
     // then wait for the whole tile to load
-    __threadfence();
+    __syncthreads();
 
 
     // now do the filtering
@@ -109,7 +113,7 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
     //// DO THE SOBEL FILTERING ///////////
 
     // boundary check if it's in the image
-    if(ty < TILESIZE && tx < TILESIZE && row < height && col < width) {
+    if(ty < TILESIZE && tx < TILESIZE) {
 
         // now do the filtering
         for (int j = 0; j < filterSize; j++) {
@@ -158,16 +162,6 @@ void populate_blur_filter(double *outFilter, size_t filterEdgeLen)
 
             //populate Kernel
             outFilter[i + j*filterEdgeLen] = filterVal;
-
-	/*
-            if (i==0 && j==0)
-            {
-                scaleVal = outFilter[0][0];
-            }
-
-            //normalize Kernel
-            outFilter[i][j] = outFilter[i][j] / scaleVal;
-	*/			
 
         }
     }
