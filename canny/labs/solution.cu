@@ -171,11 +171,11 @@ int main(int argc, char *argv[])
   wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceHistogram, 256*sizeof(unsigned int)));
   wbCheck(cudaMalloc((void **)&deviceThresh, sizeof(float)));
-  wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth*imageHeight*sizeof(float)));
-  wbCheck(cudaMalloc((void **)&deviceEdgeData, imageWidth*imageHeight*sizeof(float)));
 
   // Initialize cuda memory
   wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
+  wbCheck(cudaMemset(deviceWeakEdgeData, 0, imageWidth*imageHeight*sizeof(float)));
+  wbCheck(cudaMemset(deviceEdgeData, 0, imageWidth*imageHeight*sizeof(float)));
 
   // Stop memory allocation timer
   wbTime_stop(GPU, "Doing GPU memory allocation");
