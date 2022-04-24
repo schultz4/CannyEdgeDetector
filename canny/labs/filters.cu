@@ -228,7 +228,7 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 
        }
      }
-     __syncthreads();
+     threadfence(); // was previously syncthreads
      outImg[row*width + col] = pixelvalue;      
    }
 

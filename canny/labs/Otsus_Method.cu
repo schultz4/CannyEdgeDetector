@@ -96,7 +96,7 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 	// Return normalized threshold
 	//return bin_mids[thresh]; //This is the actual Otsu's threshold
 	//return cumsum_mean1[OUTPUT_VAL]; //This is a test value
-	return thresh; // This is also a test value and equivalent to key[0]
+	return bin_mids[thresh]; // This is also a test value and equivalent to key[0]
 
 }
 
@@ -172,13 +172,14 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 	__shared__ float inter_class_variance[256];
 	__shared__ int key[256];
 
-	float bin_length = 0.99609375;
-	float half_bin_length = 0.498046875;
+	float bin_length = 255.0f/256.0f;
+	float half_bin_length = 255.0f/512.0f;
 
 	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (tid < 256)
 	{
+
 		bin_mids[tid] = half_bin_length + bin_length * tid;
 		histogram_bin_mids[tid] = histogram[tid] * (half_bin_length + bin_length * tid);
 
@@ -207,21 +208,21 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 		mean1[tid] = cs_mean1 / weight1[tid];
 		mean2[256 - tid - 1] = cs_mean2 / weight2[256 - tid - 1];
 
-		if (tid == 0)
+		__syncthreads();
+
+		if (weight1[tid] == 0 || weight2[tid] == 0)
 		{
-			mean1[0] = 0;
+			mean1[tid] = 0;
+			mean2[tid] = 0;
 		}
 
-		if (tid == 255)
-		{
-			mean2[255] = 0;
-		}
-	
 		key[tid] = tid;
 
 		__syncthreads();
 
 		inter_class_variance[tid] = (weight1[tid] * weight2[tid] * (mean1[tid] - mean2[tid+1])) * (mean1[tid] - mean2[tid+1]);
+
+		__syncthreads();
 
 		for (int stride = 1; stride < 256; stride *= 2)
 		{
@@ -241,14 +242,60 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 		if(tid == 0)
 		{
 			thresh[0] = bin_mids[key[0]];
-			//thresh[0] = key[0]; // Test value
 		}
 	}
+}
+
+template <typename T>
+__device__ T scan_warp(volatile T *ptr, const unsigned int idx = threadIdx.x)
+{
+	const unsigned int lane = threadIdx.x & 31;
+
+	if ( lane >= 1)  ptr[ idx ] += ptr[idx - 1];
+	if ( lane >= 2)  ptr[ idx ] += ptr[idx - 2];
+	if ( lane >= 4)  ptr[ idx ] += ptr[idx - 4];
+	if ( lane >= 8)  ptr[ idx ] += ptr[idx - 8];
+	if ( lane >= 16) ptr[ idx ] += ptr[idx - 16];
+
+	return ptr[idx];
+
+}
+
+template <typename T> 
+__device__ T scan_block(volatile T *ptr , const unsigned int idx = threadIdx.x)
+{
+
+	const unsigned int lane = idx & 31;
+	const unsigned int warpid = idx >> 5;
+
+	// Step 1: Intra - warp scan in each warp
+	T val = scan_warp( ptr , idx );
+	__syncthreads ();
+
+	// Step 2: Collect per - warp partial results
+	if( lane == 31 ) ptr[ warpid ] = ptr[ idx ];
+	__syncthreads ();
+
+	// Step 3: Use 1 st warp to scan per - warp results
+	if( warpid == 0 ) scan_warp( ptr , idx );
+	__syncthreads ();
+
+	// Step 4: Accumulate results from Steps 1 and 3
+	if ( warpid > 0 ) val += ptr [ warpid - 1 ];
+	__syncthreads ();
+
+	// Step 5: Write and return the final result
+	ptr [ idx ] = val ;
+	__syncthreads ();
+
+	return val ;
+
 }
 
 
 __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width, int height)
 {
+
 	__shared__ unsigned int weight1[256];
 	__shared__ unsigned int weight2[256];
 
@@ -260,8 +307,9 @@ __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width,
 
 	__shared__ unsigned int hist_private[256];
 
-	double bin_length = 255.0f/256.0f;
-	double half_bin_length = 255.0f/512.0f;
+	// Faster division
+	float bin_length = __fdividef(255.0, 256.0f);
+	float half_bin_length = __fdividef(255.0f, 512.0f);
 
 	const int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -269,102 +317,65 @@ __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width,
 	{
 		hist_private[tid] = histogram[tid];
 
-		__syncwarp();
 		__syncthreads();
 
 		weight1[tid] = hist_private[tid];
 
 		mean1[tid] = hist_private[tid] * (half_bin_length + bin_length * tid);
 		mean2[255-tid] = hist_private[tid] * (half_bin_length + bin_length * tid);
-
-		__syncwarp();
+		
 		__syncthreads();
 
-		float cs_mean1 = mean1[0];
-		float cs_mean2 = mean1[255];
+		weight1[tid] = scan_block(weight1, tid);
+		mean1[tid] = scan_block(mean1, tid);
+		mean2[tid] = scan_block(mean2, tid);
 
-		// Calculate class probabilities and means
-		for(int i = 1; i < tid + 1; i++)
-		{
-			cs_mean1 += mean1[i];
-			cs_mean2 += mean1[256-i-1];
-		}
-
-		for(int stride = 1; stride <= tid; stride = stride * 2)
-		{
-			__syncwarp();
-			__syncthreads();
-			unsigned int w1 = weight1[tid - stride];
-			//float m1 = mean1[tid - stride];
-			//float m2 = mean2[tid - stride];
-			__syncwarp();
-			__syncthreads();
-			weight1[tid] += w1;
-			//mean1[tid] += m1;
-			//mean2[tid] += m2;
-		}
-
-		__syncwarp();
 		__syncthreads();
 
 		weight2[tid] = width * height - weight1[tid] + hist_private[tid];
+		float cs_mean2 = mean2[tid];
 
-		__syncwarp();
-		__syncthreads();
-		
-		//float cs_mean1 = mean1[tid];
-		//float cs_mean2 = mean2[tid];
-
-		__syncwarp();
 		__syncthreads();
 
-		mean1[tid] = cs_mean1 / weight1[tid];
-		mean2[tid] = cs_mean2 / weight2[255-tid];		
-
-		if (tid == 0)
-		{
-			mean1[0] = 0;
-		}
-
-		if (tid == 255)
-		{
-			mean2[255] = 0;
-		}
+		mean1[tid] = __fdividef(mean1[tid], weight1[tid]);
+		mean2[255 - tid] = __fdividef(cs_mean2, weight2[255 - tid]);
 	
 		// Make an ordered vector 0-255
 		key[tid] = tid;
 
-		__syncwarp();
+		__syncthreads();
+	
+		if (weight1[tid] == 0 || weight2[tid] == 0)
+		{
+			mean1[tid] = 0;
+			mean2[tid] = 0;
+		}
+
 		__syncthreads();
 
 		inter_class_variance[tid] = (weight1[tid] * weight2[tid] * (mean1[tid] - mean2[tid+1])) * (mean1[tid] - mean2[tid+1]) * 0.0000001f;
 
-		__syncwarp();
 		__syncthreads();
 
-		for (int stride = 1; stride < 256; stride *= 2)
+		for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
 		{
-			if(tid % (2*stride) == 0)
+			if(threadIdx.x < stride)
 			{
-				if(inter_class_variance[tid] < inter_class_variance[tid+stride])
+				if(inter_class_variance[threadIdx.x] < inter_class_variance[threadIdx.x+stride])
 				{
-					inter_class_variance[tid] = inter_class_variance[tid+stride];
-					key[tid] = key[tid+stride];
+					inter_class_variance[threadIdx.x] = inter_class_variance[threadIdx.x+stride];
+					key[threadIdx.x] = key[threadIdx.x+stride];
 				}
+				__threadfence();
 			}
 			__syncthreads();
 		}
 
-		__syncwarp();
 		__syncthreads();
 
-		//key[0] should not be 0 if working properly
-
-		if(tid == OUTPUT_VAL)
+		if(threadIdx.x == 0)
 		{
-			//thresh[0] = half_bin_length + bin_length * key[0]; //This is the actual Otsu's threshold
-			//thresh[0] = cs_mean1; //This is a test value
-			thresh[0] = key[0];
+			thresh[0] = half_bin_length + bin_length * key[0];
 		}
 
 	}	
