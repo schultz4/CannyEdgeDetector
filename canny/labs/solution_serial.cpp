@@ -128,6 +128,7 @@ int main(int argc, char *argv[]) {
 	// Calculate gradient using Sobel Operators
     wbTime_start(Compute, "GradientSobelS computation");
 	GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
+    wbTime_stop(Compute, "GradientSobelS computation");
 
   // Suppress non-maximum pixels along gradient
     wbTime_start(Compute, "Non-maximum Suppression computation");
