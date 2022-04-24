@@ -12,13 +12,6 @@ __global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     int halfFilter = 1;//(int)filterSize/2;
 
-//    float sharedfilter[FILTERSIZE][FILTERSIZE];
-//    for(int i = 0; i < filterSize; i++) {
-//        for(int j=0; j < filterSize; j++) {
-//            sharedfilter[i][j] = filter[i * filterSize + j];
-//        }
-//    }
-
    // boundary check if it's in the image
    if(row >= 0 && row < height && col >= 0 && col < width) {
      float pixelvalue = 0;
@@ -38,7 +31,7 @@ __global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width
 
        }
      }
-     __syncthreads();
+     __threadfence();     
      outImg[row*width + col] = pixelvalue;
    }
 
@@ -320,7 +313,7 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
 
        }
      }
-     __syncthreads();
+     __threadfence();
      outImg[row*width + col] = pixelvalue;      
    }
 
