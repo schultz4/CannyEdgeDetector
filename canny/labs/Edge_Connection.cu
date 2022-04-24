@@ -171,7 +171,7 @@ __global__ void thresh_detection_shared(float *image, float *weak_img, float *ed
     // Most pixels will be zero so now default to zero and only write if weak or edge pixel
 
     // Set lower threshold from high threshold
-    float thresh_low = __fdivide(thresh_high[0], 2);
+    float thresh_low = __fdividef(thresh_high[0], 2);
 
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x;
