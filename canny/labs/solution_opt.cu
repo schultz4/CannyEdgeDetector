@@ -229,7 +229,7 @@ int main(int argc, char *argv[])
     wbTime_start(Compute, "Histogram computation");
     dim3 histGrid((imageWidth * imageHeight + 256 - 1)/256);
     dim3 histBlock(256);
-  NaiveHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+  OptimizedHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   //NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
