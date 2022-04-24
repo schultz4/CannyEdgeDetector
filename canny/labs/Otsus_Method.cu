@@ -100,6 +100,81 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 
 }
 
+
+double Otsu_Sequential_Optimized(unsigned int* histogram, int width, int height)
+{
+
+	float bin_mids[256];
+	float histogram_bin_mids[256];
+	float weight1[256];
+	float weight2[256];
+	float cumsum_mean1[256];
+	float cumsum_mean2[256];
+	float mean1[256];
+	float mean2[256];
+	float inter_class_variance[255];
+	float max_variance = 0;
+
+	int thresh = 0;
+
+	float bin_length = 255.0f/256.0f;
+	float half_bin_length = 255.0f/512.0f;
+
+	// Calculate bin mids
+	#pragma parallel for
+	for(int i = 0; i < 256; i++)
+	{
+		bin_mids[i] = half_bin_length + bin_length * i;
+		histogram_bin_mids[i] = histogram[i] * (half_bin_length + bin_length * i);
+	}
+
+	weight1[0] = histogram[0];
+	weight2[0] = width * height;
+
+	// Calculate class probabilities
+	#pragma parallel for
+	for(int i = 1; i < 256; i++)
+	{
+		weight1[i] = histogram[i] + weight1[i-1];
+		weight2[i] = weight2[i-1] - histogram[i-1];
+	}
+
+	cumsum_mean1[0] = histogram_bin_mids[0];
+	cumsum_mean2[0] = histogram_bin_mids[255];
+
+	// Calculate class means
+	for(int i = 1; i < 256; i++)
+	{
+		cumsum_mean1[i] = cumsum_mean1[i-1] + histogram_bin_mids[i];
+		cumsum_mean2[i] = cumsum_mean2[i-1] + histogram_bin_mids[256 - i - 1];
+		mean1[i] = cumsum_mean1[i] / weight1[i];
+		mean2[256 - i - 1] = cumsum_mean2[i] / weight2[256 - i - 1];
+	}
+
+	// Calculate Inter_class_variance
+	#pragma parallel for
+	for(int i = 0; i < 255; i++)
+	{
+		inter_class_variance[i] = (weight1[i] * weight2[i] * (mean1[i] - mean2[i+1])) * (mean1[i] - mean2[i+1]);	
+	}
+
+	// Maximize interclass variance
+	for(int i = 0;i < 255; i++){
+		if(max_variance < inter_class_variance[i])
+		{
+			max_variance = inter_class_variance[i];
+			thresh = i;
+		}
+	}
+
+	// Return normalized threshold
+	//return bin_mids[thresh]; //This is the actual Otsu's threshold
+	//return cumsum_mean1[OUTPUT_VAL]; //This is a test value
+	return bin_mids[thresh]; // This is also a test value and equivalent to key[0]
+
+}
+
+
 __global__ void NaiveHistogram(float* image, unsigned int* histogram, int width, int height)
 {
 	// insert your code here
