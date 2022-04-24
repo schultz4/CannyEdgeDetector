@@ -17,7 +17,7 @@ float maxSupp(float center, float p1, float p2, float p3=-1.0, float p4=-1.0)
 __host__ __device__
 float getPoint(float *img, int cIdx, int rIdx, int height, int width)
 {
-  if (!img || rIdx < 0 || rIdx >= width || cIdx < 0 || cIdx >= height)
+  if (!img || rIdx < 0 || rIdx >= height || cIdx < 0 || cIdx >= width)
   {
     return 0.0;
   }
