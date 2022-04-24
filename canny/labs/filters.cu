@@ -59,7 +59,7 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
         __syncthreads();  
         // after every iteration then write to the output
         if(row < height && col < width)
-            outImg[row * width + col] = pval * (FILTERSIZE*FILTERSIZE/num_pixel);
+            outImg[row * width + col] = pval * __fdividef(FILTERSIZE*FILTERSIZE,num_pixel);
     }
 
     // then make sure the threads are all done
@@ -127,7 +127,8 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
         if (row < height && col < width) {
             // now calculate the sobel output and gradients
             sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
-            gradientImg[row*width + col] = atan(sumx/sumy) * 180/M_PI; // the gradient calculateion
+            double value = __fdividef(sumx,sumy);
+            gradientImg[row*width + col] = atan(value) * __fdividef(180,M_PI); // the gradient calculateion
 
 	}
     }
