@@ -1,7 +1,5 @@
 #include "Edge_Connection.h"
 
-// Note: I have set this code so that the edges are the value of 1 and non edges are the value of 0.
-// If this needs to change just replace the values in edge_img to whatever they need to be.
 
 void threshold_detection_serial(float *image, float *weak_img, float *edges_img, 
                         double thresh_high, int width, int height) {
@@ -123,6 +121,10 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x;
     int Row = threadIdx.y + blockIdx.y * blockDim.y;
+
+    // setup for multiple iteration
+    for(int i = 0; i < 4; i++){
+
     if ((Col < width) && (Row < height)) 
     {
 
@@ -160,13 +162,16 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
 		    }
         }
     }
+    }
 }
 
 __global__ void thresh_detection_shared(float *image, float *weak_img, float *edge_img, float *thresh_high,
                                         int width, int height) {
 
+    // Most pixels will be zero so now default to zero and only write if weak or edge pixel
+
     // Set lower threshold from high threshold
-    float thresh_low = thresh_high[0] / 2;
+    float thresh_low = __fdivide(thresh_high[0], 2);
 
     // Set up thread ID
     int Col = threadIdx.x + blockIdx.x * blockDim.x;
@@ -178,17 +183,17 @@ __global__ void thresh_detection_shared(float *image, float *weak_img, float *ed
         // Edge pixels
         if (image[Row*width+Col] >= thresh_high[0]){
             edge_img[Row*width+Col] = 1;
-            weak_img[Row*width+Col] = 0;
+            //weak_img[Row*width+Col] = 0;
 
         // Weak pixels
         } else if (image[Row*width+Col] < thresh_high[0] && image[Row*width+Col] >= thresh_low) {
-            edge_img[Row*width+Col] = 0;
+            //edge_img[Row*width+Col] = 0;
             weak_img[Row*width+Col] = 1;
 
         // Non pixels
-        } else if (image[Row*width+Col] < thresh_low){
-            edge_img[Row*width+Col] = 0;
-            weak_img[Row*width+Col] = 0;
+        //} else if (image[Row*width+Col] < thresh_low){
+            //edge_img[Row*width+Col] = 0;
+            //weak_img[Row*width+Col] = 0;
         }
     }
 }
@@ -198,7 +203,7 @@ __global__ void thresh_detection_shared(float *image, float *weak_img, float *ed
 __global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height) {
 
     // Set Tile wiidth
-    const int TILE_WIDTH = 16;
+    const int TILE_WIDTH = 14;
 
     // Size of edge screach
     const int edge_size = 1;
@@ -212,6 +217,9 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
     // Set up row and column with edge
     int Col = tx + bx * (blockDim.x - 2 * edge_size);
     int Row = ty + by * (blockDim.y - 2 * edge_size);
+
+    // run multiple iterations
+    for(int i = 0; i < 4; i++){
 
     // Set bounds for edges of image
     if ((Col < width + edge_size) && (Row < height + edge_size)) {
@@ -269,5 +277,6 @@ __global__ void edge_connection_shared(float *weak_img, float *edge_img, int wid
                 }
             }
         }
+    }
     }
 }

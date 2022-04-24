@@ -48,6 +48,13 @@ PATHS[6]=$hw_path/CannyImage/Dataset/6;
 PATHS[7]=$hw_path/CannyImage/Dataset/7;
 PATHS[8]=$hw_path/CannyImage/Dataset/8;
 PATHS[9]=$hw_path/CannyImage/Dataset/9;
+PATHS[10]=$hw_path/CannyImage/Dataset/10;
+PATHS[11]=$hw_path/CannyImage/Dataset/11;
+PATHS[12]=$hw_path/CannyImage/Dataset/12;
+PATHS[13]=$hw_path/CannyImage/Dataset/13;
+PATHS[14]=$hw_path/CannyImage/Dataset/14;
+PATHS[15]=$hw_path/CannyImage/Dataset/15;
+
 
 ## Uncomment vars below and run for memory report
 memcheck=""
