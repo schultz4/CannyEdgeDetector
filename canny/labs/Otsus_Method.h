@@ -5,6 +5,7 @@ using namespace std;
 
 void Histogram_Sequential(float* image, unsigned int* hist, int width, int height);
 double Otsu_Sequential(unsigned int* hist, int width, int height);
+double Otsu_Sequential_Optimized(unsigned int* hist, int width, int height);
 
 #ifdef __CUDACC__
 __global__ void NaiveHistogram(float* image, unsigned int* hist, int width, int height);
