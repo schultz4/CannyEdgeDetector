@@ -124,7 +124,6 @@ int main(int argc, char *argv[])
 
   // Allocate memory on host and initialize to 0
   hostHistogram = (unsigned int *)malloc(256*sizeof(unsigned int));
-  
 
   // Allocate memory on host for threshold
   hostThresh = (float *)malloc(sizeof(float));
@@ -210,13 +209,14 @@ int main(int argc, char *argv[])
 
   // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-  Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  //Conv2DOpt<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
   // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-  GradientSobelTiled<<<GridDiff, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3); 
+  GradientSobelOpt<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3); 
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 
@@ -227,9 +227,9 @@ int main(int argc, char *argv[])
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
     wbTime_start(Compute, "Histogram computation");
-    dim3 histGrid((imageWidth * imageHeight + 256 - 1)/256);
-    dim3 histBlock(256);
-  OptimizedHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+    dim3 histGrid((imageWidth * imageHeight + 512 - 1)/512);
+    dim3 histBlock(512);
+  NaiveHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   //NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
@@ -244,13 +244,13 @@ int main(int argc, char *argv[])
   
   	// Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
-	thresh_detection_shared<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
+	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
 	wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Threshold Detection computation");
 
 	// Global Memory edge connection kernal
     wbTime_start(Compute, "Edge connection computation");
-	edge_connection_shared<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
+	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
 	wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Edge connection computation");
 
