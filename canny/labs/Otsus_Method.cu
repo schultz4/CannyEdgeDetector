@@ -6,23 +6,15 @@
 
 void Histogram_Sequential(float *image, unsigned int *hist, int width, int height)
 {
-	int pos = 0;
-
 	// Loop through every pixel
 	for (int row = 0; row < height; row++)
 	{
 		for (int col = 0; col < width; col++)
 		{
-			if (image[row*width + col] > 1)
-			{
-				pos = 255;
-			}
-			else
-			{
-				pos = int(image[row*width + col] * 255);
-			}
+			int pos = image[row*width + col] * 255;
 
-			// Update histogram
+			pos = (pos > 255) ? 255 : pos;
+
 			hist[pos]++;
 		}
 
@@ -33,7 +25,6 @@ void Histogram_Sequential(float *image, unsigned int *hist, int width, int heigh
 double Otsu_Sequential(unsigned int* histogram, int width, int height)
 {
 
-	float bin_mids[256];
 	float histogram_bin_mids[256];
 	float weight1[256];
 	float weight2[256];
@@ -52,7 +43,6 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 	// Calculate bin mids
 	for(int i = 0; i < 256; i++)
 	{
-		bin_mids[i] = half_bin_length + bin_length * i;
 		histogram_bin_mids[i] = histogram[i] * (half_bin_length + bin_length * i);
 	}
 
@@ -78,6 +68,12 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 		mean2[256 - i - 1] = cumsum_mean2[i] / weight2[256 - i - 1];
 	}
 
+	for (int i = 1; i < 256; i++)
+	{
+		mean1[i] = (weight1[i] == 0) ? 0 : mean1[i];
+		mean2[i] = (weight2[i] == 0) ? 0 : mean2[i];	
+	} 
+
 	// Calculate Inter_class_variance
 	for(int i = 0; i < 255; i++)
 	{
@@ -96,7 +92,7 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 	// Return normalized threshold
 	//return bin_mids[thresh]; //This is the actual Otsu's threshold
 	//return cumsum_mean1[OUTPUT_VAL]; //This is a test value
-	return bin_mids[thresh]; // This is also a test value and equivalent to key[0]
+	return half_bin_length + bin_length * thresh; // This is also a test value and equivalent to key[0]
 
 }
 
@@ -104,7 +100,6 @@ double Otsu_Sequential(unsigned int* histogram, int width, int height)
 double Otsu_Sequential_Optimized(unsigned int* histogram, int width, int height)
 {
 
-	float bin_mids[256];
 	float histogram_bin_mids[256];
 	float weight1[256];
 	float weight2[256];
@@ -124,18 +119,25 @@ double Otsu_Sequential_Optimized(unsigned int* histogram, int width, int height)
 	#pragma omp parallel for
 	for(int i = 0; i < 256; i++)
 	{
-		bin_mids[i] = half_bin_length + bin_length * i;
 		histogram_bin_mids[i] = histogram[i] * (half_bin_length + bin_length * i);
 	}
 
 	weight1[0] = histogram[0];
 	weight2[0] = width * height;
 
+	float w1 = histogram[0];
+
 	// Calculate class probabilities
-	//#pragma omp parallel for
+	#pragma omp parallel for simd reduction(inscan, + : w1)
 	for(int i = 1; i < 256; i++)
 	{
-		weight1[i] = histogram[i] + weight1[i-1];
+		w1 += histogram[i];
+		#pragma omp scan inclusive
+		weight1[i] = w1;
+	}
+
+	for(int i = 1; i < 256; i++)
+	{
 		weight2[i] = weight2[i-1] - histogram[i-1];
 	}
 
@@ -159,6 +161,7 @@ double Otsu_Sequential_Optimized(unsigned int* histogram, int width, int height)
 	}
 
 	// Maximize interclass variance
+	#pragma omp parallel for reduction( 
 	for(int i = 0;i < 255; i++){
 		if(max_variance < inter_class_variance[i])
 		{
@@ -170,7 +173,7 @@ double Otsu_Sequential_Optimized(unsigned int* histogram, int width, int height)
 	// Return normalized threshold
 	//return bin_mids[thresh]; //This is the actual Otsu's threshold
 	//return cumsum_mean1[OUTPUT_VAL]; //This is a test value
-	return bin_mids[thresh]; // This is also a test value and equivalent to key[0]
+	return half_bin_length + bin_length * thresh; // This is also a test value and equivalent to key[0]
 
 }
 
@@ -233,12 +236,72 @@ __global__ void OptimizedHistogram(float* image, unsigned int* histogram, int wi
 
 }
 
+__global__ void OptimizedHistogramReplication(float* image, unsigned int* histogram, int width, int height)
+{
+	//Make sure to call this kernel with 1024 threads per block
+	const int R = 20;
+
+	__shared__ unsigned int hist_private[(256 + 1) * R];
+
+	// warp indexes
+	const int warp_id = (int)( __fdividef(threadIdx.x, 32) );
+	const int lane = threadIdx.x & 31;
+	const int warps_per_block = (int)( __fdividef(blockDim.x, 32) );
+
+	// offset to per-block sub histogram
+	const int off_rep = (256 + 1) * (threadIdx.x % R);
+
+	// set const for interleaved read access
+	// to reduce the number of overlapping warps
+	// account for the case where warp doesnt divide into number of elements
+	const int elem_per_warp = (width * height - 1)/warps_per_block + 1;
+	const int begin = elem_per_warp * warp_id + 32 * blockIdx.x + lane;
+	const int end = elem_per_warp * (warp_id + 1);
+	const int step = 32 * gridDim.x; 
+
+	// Initialize
+	for (int pos = threadIdx.x; pos < (256 + 1) * R; pos += blockDim.x)
+	{
+		hist_private[pos] = 0;
+	}
+
+	// wait for all threads to complete
+	__syncthreads();
+
+	// Main loop
+	for (int i = begin; i < end; i += step)
+	{
+		int pos = i < width * height ? (image[i] * 255) : 0;
+			pos = pos > 255 ? 255 : pos;
+		int inc = i < width * height ? 1 : 0; // read the global mem
+		atomicAdd(&hist_private[off_rep + pos], inc); // vote in the shared memory
+	}
+
+	// wait for threads to end
+	//__threadfence();
+	__syncthreads();
+
+	//merge per_block sub histograms and write to global memory
+	for (int pos = threadIdx.x; pos < 256; pos += blockDim.x)
+	{
+		int sum = 0;
+
+		for(int base = 0; base < (256 + 1) * R; base += (256 + 1))
+		{
+			sum += hist_private[base + pos];
+		}		
+
+		atomicAdd(histogram + pos, sum);
+	}	
+}
+
+
+
 __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int height)
 {
 	__shared__ float weight1[256];
 	__shared__ float weight2[256];
 
-	__shared__ float bin_mids[256];
 	__shared__ float histogram_bin_mids[256];
 
 	__shared__ float mean1[256];
@@ -254,9 +317,7 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 
 	if (tid < 256)
 	{
-
-		bin_mids[tid] = half_bin_length + bin_length * tid;
-		histogram_bin_mids[tid] = histogram[tid] * (half_bin_length + bin_length * tid);
+		histogram_bin_mids[tid] = histogram[tid] * (half_bin_length + bin_length * tid); //CHANGE
 
 		__syncthreads();
 
@@ -283,20 +344,23 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 		mean1[tid] = cs_mean1 / weight1[tid];
 		mean2[256 - tid - 1] = cs_mean2 / weight2[256 - tid - 1];
 
-		__syncthreads();
+		key[tid] = tid;
 
+		__syncthreads();
+		//__threadfence();
+	
 		if (weight1[tid] == 0 || weight2[tid] == 0)
 		{
 			mean1[tid] = 0;
 			mean2[tid] = 0;
 		}
 
-		key[tid] = tid;
+		__threadfence();
+		//__syncthreads();
 
-		__syncthreads();
+		inter_class_variance[tid] = (weight1[tid] * weight2[tid] * (mean1[tid] - mean2[tid+1])) * (mean1[tid] - mean2[tid+1]) * 0.0000001f;
 
-		inter_class_variance[tid] = (weight1[tid] * weight2[tid] * (mean1[tid] - mean2[tid+1])) * (mean1[tid] - mean2[tid+1]);
-
+		//__threadfence();
 		__syncthreads();
 
 		for (int stride = 1; stride < 256; stride *= 2)
@@ -311,13 +375,15 @@ __global__ void NaiveOtsu(unsigned int *histogram, float* thresh, int width, int
 			}
 			__syncthreads();
 		}
-	
-		__syncthreads();
 
-		if(tid == 0)
+		__threadfence();
+		//__syncthreads();
+
+		if(threadIdx.x == 0)
 		{
-			thresh[0] = bin_mids[key[0]];
+			thresh[0] = half_bin_length + bin_length * key[0];
 		}
+
 	}
 }
 
@@ -366,7 +432,6 @@ __device__ T scan_block(volatile T *ptr , const unsigned int idx = threadIdx.x)
 	return val ;
 
 }
-
 
 __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width, int height)
 {
@@ -425,8 +490,8 @@ __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width,
 			mean2[tid] = 0;
 		}
 
-		__threadfence();
-		//__syncthreads();
+		//__threadfence();
+		__syncthreads();
 
 		inter_class_variance[tid] = (weight1[tid] * weight2[tid] * (mean1[tid] - mean2[tid+1])) * (mean1[tid] - mean2[tid+1]) * 0.0000001f;
 
@@ -447,7 +512,7 @@ __global__ void OptimizedOtsu(unsigned int *histogram, float* thresh, int width,
 		}
 
 		__threadfence();
-		//__syncthreads();
+		__syncthreads();
 
 		if(threadIdx.x == 0)
 		{
