@@ -36,6 +36,58 @@ __global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width
    }
 
 }
+__global__ void Conv2DOptRow(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int halfFilter = 1;//(int)filterSize/2;
+
+   // boundary check if it's in the image
+   if(row >= 0 && row < height && col >= 0 && col < width) {
+     float pixelvalue = 0;
+     int start_col = col - halfFilter;
+
+     // now do the filtering
+     for (int j = 0; j < filterSize; ++j) {
+         int cur_row = row;
+         int cur_col = start_col + j;
+
+         // only count the ones that are inside the boundaries
+         if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width) {
+           pixelvalue += inImg[cur_row*width + cur_col] * filter[j*filterSize+1]*3; //[k][j];
+         }
+
+     }
+     __threadfence();
+     outImg[row*width + col] = pixelvalue;
+   }
+
+}
+__global__ void Conv2DOptCol(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int halfFilter = 1;//(int)filterSize/2;
+
+   // boundary check if it's in the image
+   if(row >= 0 && row < height && col >= 0 && col < width) {
+     float pixelvalue = 0;
+     int start_row = row - halfFilter;
+
+     // now do the filtering
+     for (int j = 0; j < filterSize; ++j) {
+         int cur_row = start_row+j;
+         int cur_col = col;
+
+         // only count the ones that are inside the boundaries
+         if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width) {
+           pixelvalue += inImg[cur_row*width + cur_col] * filter[filterSize + j]; //[k][j];
+         }
+
+     }
+     __threadfence();
+     outImg[row*width + col] = pixelvalue;
+   }
+
+}
 
 __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientImg, int height, int width, size_t filterSize) {
     //int filterSize = (int)FILTERSIZE;

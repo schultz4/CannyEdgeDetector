@@ -124,6 +124,7 @@ int main(int argc, char *argv[]) {
 	// Blur image using Gaussian Kernel
     wbTime_start(Compute, "Conv2D computation");
 	Conv2DSerial(GrayImageData, BlurImageData, filter, imageWidth, imageHeight, filterSize);
+    wbTime_stop(Compute, "Conv2D computation");
 
 	// Calculate gradient using Sobel Operators
     wbTime_start(Compute, "GradientSobelS computation");

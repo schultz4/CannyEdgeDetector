@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
   // Device side parameters
   float *deviceInputImageData;
   float *deviceGrayImageData;
+  float *deviceBlur1ImageData;
   float *deviceBlurImageData;
   float *deviceGradMagData;
   float *deviceGradPhaseData;
@@ -157,6 +158,7 @@ int main(int argc, char *argv[])
   // Allocate memory on device
   wbCheck(cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceGrayImageData, imageWidth*imageHeight*sizeof(float)));
+  wbCheck(cudaMalloc((void **)&deviceBlur1ImageData, imageWidth*imageHeight*sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceBlurImageData, imageWidth*imageHeight*sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceGradMagData, imageWidth*imageHeight*sizeof(float)));
   wbCheck(cudaMalloc((void **)&deviceGradPhaseData, imageWidth*imageHeight*sizeof(float)));
@@ -210,7 +212,9 @@ int main(int argc, char *argv[])
 
   // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-  Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  //Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlur1ImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+  Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlur1ImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
   wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
@@ -379,6 +383,7 @@ int main(int argc, char *argv[])
   // Destory all cuda memory
   cudaFree(deviceInputImageData);
   cudaFree(deviceGrayImageData);
+  cudaFree(deviceBlur1ImageData);
   cudaFree(deviceBlurImageData);
   cudaFree(deviceGradMagData);
   cudaFree(deviceGradPhaseData);
