@@ -127,18 +127,18 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
                 sumx += -1 * inImg[(row-1)*width + (col-1)];
 		sumx += -2 * inImg[(row)*width + (col-1)];
 	    }
-            if ((col+1) <=width) {
+            if ((col+1) < width) {
                 sumy += -1 * inImg[(row-1)*width + (col+1)];
                 sumx += 1  * inImg[(row-1)*width + (col+1)];
 	    }
         }
-        if ((row+1)<= height ){
+        if ((row+1)< height ){
            sumy += 2 * inImg[(row+1)*width + col];
            if ((col-1) >= 0) {
                 sumx += -1 * inImg[(row+1)*width+(col-1)];
                 sumy +=  1 * inImg[(row+1)*width+(col-1)];
            }
-           if ((col+1) <= width) {
+           if ((col+1) < width) {
 	        sumx +=  1 * inImg[(row+1)*width + (col+1)];
 		sumy +=  1 * inImg[(row+1)*width + (col+1)];
                 sumx +=  2 * inImg[(row)*width + (col+1)];
@@ -148,7 +148,6 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
         sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
         gradientImg[row*width + col] = atan(__fdividef(sumx, sumy)) * __fdividef(180,M_PI); // the gradient calculateion
     }
-
 }
 
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize) {
