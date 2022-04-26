@@ -162,6 +162,9 @@ void nms_global(float *inImg, float *nmsImg, float *gradImg, int height, int wid
 __global__
 void nms_opt(float *inImg, float *nmsImg, float *gradImg, int height, int width)
 {
+  // pixel 299, 299
+  // blockIdx = 300.0 / 16 = 18.75 
+  // 18*16 = 288 --> thread 11
   size_t col = blockDim.x * blockIdx.x + threadIdx.x;
   size_t row  = blockDim.y * blockIdx.y + threadIdx.y;
 
@@ -173,7 +176,7 @@ void nms_opt(float *inImg, float *nmsImg, float *gradImg, int height, int width)
   __shared__ float pImage[TILE_SIZE + 2][TILE_SIZE + 2];
   __shared__ float pAngle[TILE_SIZE][TILE_SIZE];
 
-  if (col < width && row < height) // Since size_t is unsigned, it can't fall below 0
+  if (col < width + 2 && row < height + 2) // Since size_t is unsigned, it can't fall below 0
   {
     //for(size_t i = 0; i < P_IMG_SIZE; i += TILE_SIZE)
     for(size_t i = 0; threadIdx.x + i < P_IMG_SIZE; i += TILE_SIZE)
@@ -183,9 +186,12 @@ void nms_opt(float *inImg, float *nmsImg, float *gradImg, int height, int width)
         pImage[threadIdx.x + i][threadIdx.y + j] = getPoint(inImg, col + i - 1, row + j - 1, height, width);
       }
     }
-    pAngle[threadIdx.x][threadIdx.y] = gradImg[row*width + col];
-    __syncthreads();
+    pAngle[threadIdx.x][threadIdx.y] = getPoint(gradImg, col, row, height, width);//gradImg[row*width + col];
+  }
+  __syncthreads();
 
+  if (col < width && row < height) // Since size_t is unsigned, it can't fall below 0
+  {
     float angle = pAngle[threadIdx.x][threadIdx.y];//*(gradImg + row*width + col);
     size_t i = threadIdx.x + 1;
     size_t j = threadIdx.y + 1;
