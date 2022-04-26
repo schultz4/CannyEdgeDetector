@@ -95,6 +95,7 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
     int col = blockIdx.x * blockDim.x + threadIdx.x;
 
     // To detect horizontal lines, G_x. 
+/*
     const int fmat_x[3][3] = {
         {-1, 0, 1},
         {-2, 0, 2},
@@ -106,36 +107,43 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
         {0,   0,  0},
         {1,   2,  1}
     };
-
+*/
     // now do the filtering
     // halfFitler is how many are on each side
 
     // now do the filtering
     // halfFitler is how many are on each side
-    int halfFilter = 1;//(int)filterSize/2;
     float sumx = 0;
     float sumy = 0;
     //// DO THE SOBEL FILTERING ///////////
 
     // boundary check if it's in the image
     if(row >= 0 && row < height && col >= 0 && col < width) {
-        int start_col = col - halfFilter;
-        int start_row = row - halfFilter;
-
-        // now do the filtering
-        for (int j = 0; j < filterSize; ++j) {
-            for (int k = 0; k < filterSize; ++k) {
-                int cur_row = start_row + j;
-                int cur_col = start_col + k;
-
-                // only count the ones that are inside the boundaries
-                if (cur_row >=0 && cur_row < height && cur_col >= 0 && cur_col < width ) {
-                    sumy += inImg[cur_row*width + cur_col] * fmat_y[j][k];
-                    sumx += inImg[cur_row*width + cur_col] * fmat_x[j][k];
-                }
-            }
+      // only count the ones that are inside the boundaries
+        if ((row-1) >= 0){
+            sumy += -2 * inImg[(row-1)*width + col];
+            if  ((col-1 ) >= 0) {
+                sumy += -1 * inImg[(row-1)*width + (col-1)];
+                sumx += -1 * inImg[(row-1)*width + (col-1)];
+		sumx += -2 * inImg[(row)*width + (col-1)];
+	    }
+            if ((col+1) <=width) {
+                sumy += -1 * inImg[(row-1)*width + (col+1)];
+                sumx += 1  * inImg[(row-1)*width + (col+1)];
+	    }
         }
-
+        if ((row+1)<= height ){
+           sumy += 2 * inImg[(row+1)*width + col];
+           if ((col-1) >= 0) {
+                sumx += -1 * inImg[(row+1)*width+(col-1)];
+                sumy +=  1 * inImg[(row+1)*width+(col-1)];
+           }
+           if ((col+1) <= width) {
+	        sumx +=  1 * inImg[(row+1)*width + (col+1)];
+		sumy +=  1 * inImg[(row+1)*width + (col+1)];
+                sumx +=  2 * inImg[(row)*width + (col+1)];
+           } 
+	}
         // now calculate the sobel output and gradients
         sobelImg[row*width + col] = sqrt(sumx * sumx + sumy*sumy); // output of the sobel filter
         gradientImg[row*width + col] = atan(__fdividef(sumx, sumy)) * __fdividef(180,M_PI); // the gradient calculateion
