@@ -139,8 +139,7 @@ int main(int argc, char *argv[])
 
     // Calculate threshold using Otsu's Method
     wbTime_start(Compute, "Otsu's computation");
-        double thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
-        //double thresh = Otsu_Sequential_Optimized(histogram, imageWidth, imageHeight);
+        float thresh = Otsu_Sequential(histogram, imageWidth, imageHeight);
     wbTime_stop(Compute, "Otsu's computation");
 
     // Calculate strong, weak, and non edges using thresholds

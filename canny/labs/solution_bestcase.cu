@@ -23,11 +23,12 @@
 
 int main(int argc, char *argv[])
 {
-    cudaFree(0);
 
     //////////////////////////////
     // Parameter Initialization //
     //////////////////////////////
+
+    cudaFree(0);
 
     // Image parameters for wbLib
     wbArg_t args;
@@ -48,26 +49,32 @@ int main(int argc, char *argv[])
     float *hostNmsImageData;
     float *hostEdgeData;
     float *hostWeakEdgeData;
-    float *hostThresh;
+	float *hostThresh;
 
     // Device side parameters
     float *deviceInputImageData;
     float *deviceGrayImageData;
     float *deviceBlurImageData;
+	float *deviceBlurTempImageData;
     float *deviceGradMagData;
     float *deviceGradPhaseData;
     float *deviceNmsImageData;
     float *deviceEdgeData;
     float *deviceWeakEdgeData;
-    float *deviceThresh;
+	float *deviceThresh;
 
     // Otsu's Method parameters
     unsigned int *hostHistogram;
     unsigned int *deviceHistogram;
 
+
+
+
+
     ////////////////////
     // Image Handling //
     ////////////////////
+
 
     // Parse the input arguments
     args = wbArg_read(argc, argv);
@@ -93,9 +100,11 @@ int main(int argc, char *argv[])
     float *outData = (float *)calloc(imageHeight * imageWidth, sizeof(float));
     outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
 
+
     ////////////////////////////////
     // Host Memory Initialization //
     ////////////////////////////////
+
 
     // Start total program timer
     wbTime_start(GPU, "Doing Computation (memory + compute)");
@@ -112,23 +121,15 @@ int main(int argc, char *argv[])
     hostEdgeData = (float *)malloc(imageHeight * imageWidth * sizeof(float));
     hostWeakEdgeData = (float *)malloc(imageHeight * imageWidth * sizeof(float));
 
-    // Allocate memory for serial filtering and initialize to 0
-    // BlurImageData       = (float *)calloc(imageHeight*imageWidth, sizeof(float));
-    // GradMagData    		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-    // GradPhaseData 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-    // NmsImageData      	= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-    // EdgeData	 		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-    // WeakEdgeData   		= (float *)calloc(imageHeight*imageWidth, sizeof(float));
-
     // Allocate memory on host and initialize to 0
     hostHistogram = (unsigned int *)malloc(256 * sizeof(unsigned int));
+	hostThresh = (float *)malloc(sizeof(float));
 
-    // Allocate memory on host for threshold
-    hostThresh = (float *)malloc(sizeof(float));
 
     /////////////////////////
     // Image Preprocessing //
     /////////////////////////
+
 
     // Create filter skeleton
     // double filter[FILTERSIZE][FILTERSIZE];
@@ -142,14 +143,17 @@ int main(int argc, char *argv[])
     // ?????
     // int filterSize = (int)FILTERSIZE;
 
+
     //////////////////////////////////
     // Device Memory Initialization //
     //////////////////////////////////
+
 
     // Allocate memory on device
     wbCheck(cudaMalloc((void **)&deviceInputImageData, imageWidth * imageHeight * imageChannels * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceGrayImageData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceBlurImageData, imageWidth * imageHeight * sizeof(float)));
+    wbCheck(cudaMalloc((void **)&deviceBlurTempImageData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceGradMagData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceGradPhaseData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceNmsImageData, imageWidth * imageHeight * sizeof(float)));
@@ -174,9 +178,11 @@ int main(int argc, char *argv[])
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
+
     ///////////////////
     // GPU Execution //
     ///////////////////
+
 
     // Start computation timer
     wbTime_start(Compute, "Doing the computation on the GPU");
@@ -186,68 +192,76 @@ int main(int argc, char *argv[])
 
     // Initialize x and y block dimension to blocksize
     dim3 BlockDim(blocksize, blocksize);
+    dim3 histBlockDim(1024);
 
     // Set x and y grid dimension
     dim3 GridDim(((imageWidth + BlockDim.x - 1) / BlockDim.x), ((imageHeight + BlockDim.y - 1) / BlockDim.y));
+    dim3 histGridDim((imageWidth * imageHeight + histBlockDim.x - 1) / histBlockDim.x);
     dim3 GridDiff(((imageWidth + 14 - 1) / 14), ((imageHeight + 14 - 1) / 14));
+
+
     // Call RGB to grayscale conversion kernel
     wbTime_start(Compute, "ColorToGrayscale computation");
-    ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
+    	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "ColorToGrayscale computation");
 
     // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-    Conv2D<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-    // Conv2DOpt<<<GridDim, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+		Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurTempImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+		Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlurTempImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
     // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-    GradientSobelOpt<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3);
+    	GradientSobelOpt<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 
     // Suppress non-maximum pixels along gradient
     wbTime_start(Compute, "Non-maximum Suppression computation");
-    nms_opt<<<GridDim, BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
+    	nms_global<<<GridDim, BlockDim>>>(deviceGradMagData, deviceNmsImageData, deviceGradPhaseData, imageHeight, imageWidth);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
     wbTime_start(Compute, "Histogram computation");
-    dim3 histGrid((imageWidth * imageHeight + 512 - 1) / 512);
-    dim3 histBlock(512);
-    NaiveHistogram<<<histGrid, histBlock>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
-    // NaiveHistogram<<<GridDim,BlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+    	//OptimizedHistogram<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+    	OptimizedHistogramReplication<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 
+    //wbCheck(cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+
     // Stop computation timer
+    // Calculate threshold using Otsu's Method
     wbTime_start(Compute, "Otsu's computation");
-    NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
-    // OptimizedOtsu<<<1,256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
-    wbCheck(cudaDeviceSynchronize());
+        hostThresh[0] = Otsu_Sequential_Optimized(hostHistogram, imageWidth, imageHeight);
     wbTime_stop(Compute, "Otsu's computation");
+
+    cudaMemcpy(deviceThresh, hostThresh, sizeof(double), cudaMemcpyHostToDevice);
 
     // Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
-    thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
+    	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Threshold Detection computation");
 
     // Global Memory edge connection kernal
     wbTime_start(Compute, "Edge connection computation");
-    edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
+    	edge_connection_global<<<GridDim, BlockDim>>>(deviceWeakEdgeData, deviceEdgeData, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Edge connection computation");
 
     // Stop computation timer
     wbTime_stop(Compute, "Doing the computation");
 
+
     ////////////////////
     // Device Results //
     ////////////////////
+
 
     // Start device memory copy timer
     wbTime_start(Copy, "Copying data from the GPU");
@@ -258,8 +272,6 @@ int main(int argc, char *argv[])
     cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostEdgeData, deviceEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -269,9 +281,11 @@ int main(int argc, char *argv[])
     // Stop total program timer
     wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
+
     ////////////////////////
     // Logging and Output //
     ////////////////////////
+
 
     // Copy image data for output image (choose 1 - can only log one at a time for now
     // For GPU execution
@@ -283,22 +297,16 @@ int main(int argc, char *argv[])
     // memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
     memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
 
-    // For Host execution
-    // memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, NmsImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, WeakEdgeData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, EdgeData, imageHeight*imageWidth*sizeof(float));
-
     // Export image
     char *oFile = wbArg_getOutputFile(args);
     wbExport(oFile, outputImage);
 
+
     ////////////////////
     // Debugging Info //
     ////////////////////
+
+
 #if (PRINT_DEBUG)
 
     // Print info
@@ -306,12 +314,6 @@ int main(int argc, char *argv[])
     printf("Width = %u\n", imageWidth);
     printf("Height = %u\n", imageHeight);
     printf("InputImage[0] = %f\n", hostInputImageData[0]);
-    // printf("Histogram[0] = %u\n",histogram[0]);
-    // printf("Histogram[1] = %u\n",histogram[1]);
-    // printf("Histogram[20] = %u\n",histogram[20]);
-    // printf("Histogram[45] = %u\n",histogram[45]);
-    // printf("Histogram[56] = %u\n",histogram[56]);
-    // printf("Histogram[255] = %u\n",histogram[255]);
     printf("Host Histogram[0] = %u\n", hostHistogram[0]);
     printf("Host Histogram[1] = %u\n", hostHistogram[1]);
     printf("Host Histogram[20] = %u\n", hostHistogram[20]);
@@ -335,6 +337,7 @@ int main(int argc, char *argv[])
         }
         printf("\n");
     }
+
     // printf("Blurred Image[0] = %f\n",hostBlurImageData[0]*255);
     // printf("Blurred [25] = %f\n", hostBlurImageData[25]*255);
     // printf("Blurred Image[290] = %f\n",hostBlurImageData[290]*255);
@@ -348,9 +351,7 @@ int main(int argc, char *argv[])
     // printf("NMS at [20] = %f\n",hostNmsImageData[20]);
     // printf("NMS at [130] = %f\n",hostNmsImageData[130]);
     // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
-    // printf("Otsu's Threshold = %f\n", thresh);
     printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
-    // printf("Number of histogram differences = %u\n", diff_count);
     // printf("\n");
 #endif
 
@@ -362,13 +363,14 @@ int main(int argc, char *argv[])
     cudaFree(deviceInputImageData);
     cudaFree(deviceGrayImageData);
     cudaFree(deviceBlurImageData);
+    cudaFree(deviceBlurTempImageData);
     cudaFree(deviceGradMagData);
     cudaFree(deviceGradPhaseData);
     cudaFree(deviceEdgeData);
     cudaFree(deviceWeakEdgeData);
     cudaFree(deviceHistogram);
-    cudaFree(deviceThresh);
     cudaFree(deviceFilter);
+	cudaFree(deviceThresh);
 
     // Destroy host memory
     free(hostBlurImageData);
@@ -381,14 +383,6 @@ int main(int argc, char *argv[])
     free(hostThresh);
     free(filter);
 
-    // Destroy CPU memory
-    // free(BlurImageData);
-    // free(GradMagData);
-    // free(GradPhaseData);
-    // free(NmsImageData);
-    // free(histogram);
-    // free(EdgeData);
-    // free(WeakEdgeData);
 
     // Destroy images
     wbImage_delete(outputImage);
