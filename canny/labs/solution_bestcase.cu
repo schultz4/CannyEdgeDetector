@@ -23,6 +23,7 @@
 
 int main(int argc, char *argv[])
 {
+  cudaFree(0);
 
     //////////////////////////////
     // Parameter Initialization //
@@ -49,19 +50,19 @@ int main(int argc, char *argv[])
     float *hostNmsImageData;
     float *hostEdgeData;
     float *hostWeakEdgeData;
-	float *hostThresh;
+    float *hostThresh;
 
     // Device side parameters
     float *deviceInputImageData;
     float *deviceGrayImageData;
     float *deviceBlurImageData;
-	float *deviceBlurTempImageData;
+    float *deviceBlurTempImageData;
     float *deviceGradMagData;
     float *deviceGradPhaseData;
     float *deviceNmsImageData;
     float *deviceEdgeData;
     float *deviceWeakEdgeData;
-	float *deviceThresh;
+    float *deviceThresh;
 
     // Otsu's Method parameters
     unsigned int *hostHistogram;
@@ -208,15 +209,15 @@ int main(int argc, char *argv[])
 
     // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-		Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurTempImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-		Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlurTempImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+         Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurTempImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+         Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlurTempImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
     // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-    	GradientSobelOpt<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3);
-    wbCheck(cudaDeviceSynchronize());
+  GradientSobelOpt<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth); 
+  wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 
     // Suppress non-maximum pixels along gradient
@@ -291,11 +292,11 @@ int main(int argc, char *argv[])
     // For GPU execution
     // memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
+     memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
-    memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
+    //memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
 
     // Export image
     char *oFile = wbArg_getOutputFile(args);
@@ -356,8 +357,6 @@ int main(int argc, char *argv[])
 #endif
 
     //////////////
-    // Clean Up //
-    //////////////
 
     // Destory all cuda memory
     cudaFree(deviceInputImageData);
@@ -370,7 +369,7 @@ int main(int argc, char *argv[])
     cudaFree(deviceWeakEdgeData);
     cudaFree(deviceHistogram);
     cudaFree(deviceFilter);
-	cudaFree(deviceThresh);
+    cudaFree(deviceThresh);
 
     // Destroy host memory
     free(hostBlurImageData);

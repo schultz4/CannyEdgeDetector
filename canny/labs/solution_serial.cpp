@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 
     // Calculate gradient using Sobel Operators
     wbTime_start(Compute, "GradientSobelS computation");
-        GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth, filterSize);
+        GradientSobelSerial(BlurImageData, GradMagData, GradPhaseData, imageHeight, imageWidth);
     wbTime_stop(Compute, "GradientSobelS computation");
 
     // Suppress non-maximum pixels along gradient
@@ -166,9 +166,9 @@ int main(int argc, char *argv[])
     // memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
-    memcpy(outData, NmsImageData, imageHeight * imageWidth * sizeof(float));
-    // memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, NmsImageData, imageHeight * imageWidth * sizeof(float));
+     memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
 
     // Export image
     char *oFile = wbArg_getOutputFile(args);

@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 
     // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-        GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3);
+        GradientSobel<<<GridDim, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 

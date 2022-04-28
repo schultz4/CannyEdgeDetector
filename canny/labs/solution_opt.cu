@@ -211,8 +211,8 @@ int main(int argc, char *argv[])
 
     // Call sobel filtering kernel
     wbTime_start(Compute, "GradientSobelS computation");
-    	GradientSobelTiled<<<GridDiff, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth, 3);
-    wbCheck(cudaDeviceSynchronize());
+  GradientSobelTiled<<<GridDiff, BlockDim>>>(deviceBlurImageData, deviceGradMagData, deviceGradPhaseData, imageHeight, imageWidth); 
+  wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "GradientSobelS computation");
 
     // Suppress non-maximum pixels along gradient
