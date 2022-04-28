@@ -4,7 +4,7 @@
 //  gradient descent = GradientSobel
 
 #include "filters.h"
-
+__constant__ float sharedfilter[100]; 
 #define FILTERSIZE 3
 #define BLOCKSIZE 16
 
@@ -99,7 +99,6 @@ __global__ void Conv2DOptCol(float *inImg, float *outImg, double *filter, int wi
     int col = blockIdx.x * blockDim.x + threadIdx.x;
     int halfFilter = (int)(filterSize/2);
 
-    // boundary check if it's in the image
     if (row >= 0 && row < height && col >= 0 && col < width)
     {
         float pixelvalue = 0;
@@ -210,15 +209,6 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
     int halfFilter = (int)(filterSize/2);
-    // first make a shared memory filter
-    float sharedfilter[FILTERSIZE][FILTERSIZE];
-    for (int i = 0; i < filterSize; i++)
-    {
-        for (int j = 0; j < filterSize; j++)
-        {
-            sharedfilter[i][j] = filter[i * filterSize + j];
-        }
-    }
 
     int TILESIZE = BLOCKSIZE - FILTERSIZE + 1;
     int tx = threadIdx.x;
@@ -263,10 +253,10 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
                 int currentcol = j + cornercol;
                 if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width)
                 {
-                    pval += tile[currentrow][currentcol] * sharedfilter[j][i];
-                    // num_pixel++;
-                }
-            }
+  		    pval += tile[currentrow][currentcol] * filter[j*width+i];   
+
+		}
+             }
         }
         __syncthreads();
         // after every iteration then write to the output
@@ -275,7 +265,7 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
     }
 
     // then make sure the threads are all done
-    //__syncthreads();
+    __syncthreads();
 }
 
 
@@ -292,7 +282,7 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
     // int row = blockIdx.y * blockDim.y + threadIdx.y;
     // int col = blockIdx.x * blockDim.x + threadIdx.x;
 
-    int TILESIZE = BLOCKSIZE - FILTERSIZE + 1;
+    int TILESIZE = BLOCKSIZE - filterSize + 1;
     // To detect horizontal lines, G_x.
     const int fmat_x[3][3] = {
         {-1, 0, 1},
@@ -362,15 +352,42 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
 
 
 ////////////////////////////////////////////////////////
+// populate_blur_filter inputs: inImg: the input grayscale image
+// the width and the height of the image 
+// and outputs stdev, the standard deviation of the center row
+/////////////////////////////////////////////////////////
+float get_std(float *inImg, int width, int height){
+    // sum the center row for std approximation
+    float summation = 0;
+    int row = floor(height/2);
+    int col = floor(width/2);
+    for(int i = 0; i < width; i++) {
+       summation += inImg[row*width+i];
+    }
+    for(int i = 0; i < height; i++) {
+       summation += inImg[(row+i)*width+col];
+    }
+    float mean = summation / (width + height);
+    float variance = 0;
+    for(int i = 0; i < width; i++) {
+       variance += pow(inImg[row*width+i] - mean, 2); 
+    }
+    for(int i = 0; i < height; i++) {
+       variance += pow(inImg[(row+i)*width+col] - mean, 2);
+    }
+    float stdev = sqrt(variance/(width+height));
+    return stdev;
+}
+
+////////////////////////////////////////////////////////
 // populate_blur_filter inputs: filterEdgeLength: the size of the filter (square filter) 
 // and outputs outFilter: a gaussian calculated that is FilterEdgeLen x FilterEdgeLen sized
 /////////////////////////////////////////////////////////
-void populate_blur_filter(double *outFilter, size_t filterEdgeLen)
+void populate_blur_filter(double *outFilter, size_t filterEdgeLen, float stDevSq)
 {
     // double scaleVal = 1;
     // double stDev = (double)FILTERSIZE/3;
 
-    double stDevSq = 0.6;
     double pi = M_PI;
     double scaleFac = (1 / (2 * pi * stDevSq));
 

@@ -130,14 +130,6 @@ int main(int argc, char *argv[])
     // Create filter skeleton
     // double filter[FILTERSIZE][FILTERSIZE];
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
-    double *deviceFilter;
-    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
-
-    // Fill the gaussian filter
-    populate_blur_filter(filter, filterSize);
-
-    // ?????
-    // int filterSize = (int)FILTERSIZE;
 
 
     //////////////////////////////////
@@ -170,7 +162,6 @@ int main(int argc, char *argv[])
     wbTime_start(Copy, "Copying data to the GPU");
 
     // Copy input image from host to device
-    wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
@@ -196,6 +187,22 @@ int main(int argc, char *argv[])
     dim3 GridDiff(((imageWidth + 14 - 1) / 14), ((imageHeight + 14 - 1) / 14));
 
     // Call RGB to grayscale conversion kernel
+  // Create filter skeleton
+  //double filter[FILTERSIZE][FILTERSIZE];
+  double *sharedfilter = (double *)calloc(filterSize*filterSize, sizeof(double));
+  double *deviceFilter;
+  wbCheck(cudaMalloc((void **)&deviceFilter, filterSize*filterSize*sizeof(double)));
+  //stdev = wbArg_getInputFilterSize(args);
+  float stdev = .6;
+  filterSize = 2*ceil(stdev) + 1;
+
+  // Fill the gaussian filter
+  populate_blur_filter(filter, filterSize, stdev);
+  cudaMemcpyToSymbol(sharedfilter, &filter, filterSize * sizeof(float));
+  // ?????
+  //int filterSize = (int)FILTERSIZE;
+
+
     wbTime_start(Compute, "ColorToGrayscale computation");
     	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());

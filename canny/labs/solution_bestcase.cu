@@ -132,18 +132,6 @@ int main(int argc, char *argv[])
     /////////////////////////
 
 
-    // Create filter skeleton
-    // double filter[FILTERSIZE][FILTERSIZE];
-    double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
-    double *deviceFilter;
-    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
-
-    // Fill the gaussian filter
-    populate_blur_filter(filter, filterSize);
-
-    // ?????
-    // int filterSize = (int)FILTERSIZE;
-
 
     //////////////////////////////////
     // Device Memory Initialization //
@@ -174,8 +162,6 @@ int main(int argc, char *argv[])
     // Start memory copy timer
     wbTime_start(Copy, "Copying data to the GPU");
 
-    // Copy input image from host to device
-    wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
@@ -206,6 +192,21 @@ int main(int argc, char *argv[])
     	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "ColorToGrayscale computation");
+
+
+    // Fill the gaussian filter
+    float stdev = 1.6;//get_std(deviceGrayImageData, imageWidth, imageHeight);
+    printf("std = %f\n", stdev);
+    filterSize = 2*ceil(stdev)+1;
+
+    printf("Stdev = %f and filterSize = %d\n",stdev, filterSize);
+    double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
+    double *deviceFilter;
+    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
+    populate_blur_filter(filter, filterSize, stdev);
+    // Copy input image from host to device
+    wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
+
 
     // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
@@ -292,7 +293,7 @@ int main(int argc, char *argv[])
     // For GPU execution
     // memcpy(outData, hostGrayImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostBlurImageData, imageHeight*imageWidth*sizeof(float));
-    //memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
+    // memcpy(outData, hostGradMagData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
      memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
