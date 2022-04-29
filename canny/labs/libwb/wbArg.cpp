@@ -114,6 +114,7 @@ wbArg_t wbArg_read(int argc, char **argv) {
 
   arg = wbArg_new(&argc, &argv);
   wbArg_setInputFilterSize(arg, 3); // Default filter size
+  wbArg_setInputStdev(arg, 1.6); // Default filter size
   for (ii = 0; ii < argc; ii++) {
     if (wbString_startsWith(argv[ii], "-s")) {
       parseSessionId(argv[++ii]);
@@ -142,6 +143,13 @@ wbArg_t wbArg_read(int argc, char **argv) {
       printf("DEBUG: filter size=%s\n", size);
 #endif
       wbArg_setInputFilterSize(arg, atoi(size)); 
+    } else if (wbString_startsWith(argv[ii], "-d")) {
+      // TODO - set filter size here
+      char *stdev = parseString(argv[++ii]);
+#if (PRINT_DEBUG)
+      printf("DEBUG: std deviation=%s\n", stdev);
+#endif
+      wbArg_setInputStdev(arg, atof(stdev)); 
     } else if (argv[ii][0] == '-') {
       wbLog(ERROR, "Unexpected program option ", argv[ii]);
     }

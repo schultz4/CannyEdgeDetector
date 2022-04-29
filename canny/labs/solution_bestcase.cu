@@ -195,11 +195,13 @@ int main(int argc, char *argv[])
 
 
     // Fill the gaussian filter
-    float stdev = 1.6;//get_std(deviceGrayImageData, imageWidth, imageHeight);
-    printf("std = %f\n", stdev);
+    //float stdev = 1.6;//get_std(deviceGrayImageData, imageWidth, imageHeight);
+    double stdev = wbArg_getInputStdev(args);
     filterSize = 2*ceil(stdev)+1;
 
-    printf("Stdev = %f and filterSize = %d\n",stdev, filterSize);
+#if (PRINT_DEBUG)
+    printf("Stdev = %f and filterSize = %lu\n",stdev, filterSize);
+#endif
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     double *deviceFilter;
     wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));

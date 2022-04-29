@@ -81,7 +81,8 @@ int main(int argc, char *argv[])
 
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
-    stdev = wbArg_getInputFilterSize(args);
+    stdev = wbArg_getInputStdev(args);
+    std::cout << "DEBUG: stdev=" << stdev << "\n";
     filterSize = 2*ceil(stdev/40.0) + 1;
     // Import input image
     inputImage = wbImport(inputImageFile);
