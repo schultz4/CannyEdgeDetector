@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
-    stdev  = wbArg_getInputFilterSize(args);
+    stdev  = wbArg_getInputStdev(args);
 
     // Import input image
     inputImage = wbImport(inputImageFile);
@@ -116,8 +116,10 @@ int main(int argc, char *argv[])
     // solve for stdev of center row
     stdev = get_std(GrayImageData, imageWidth, imageHeight);
     filterSize = 2*ceil(stdev*3)+1;
+#ifdef (PRINT_DEBUG)
     printf("\n");
     printf("Stdev = %f\n", stdev);
+#endif
     // Fill the gaussian filter
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     populate_blur_filter(filter, filterSize, stdev);

@@ -192,8 +192,7 @@ int main(int argc, char *argv[])
   double *sharedfilter = (double *)calloc(filterSize*filterSize, sizeof(double));
   double *deviceFilter;
   wbCheck(cudaMalloc((void **)&deviceFilter, filterSize*filterSize*sizeof(double)));
-  //stdev = wbArg_getInputFilterSize(args);
-  float stdev = .6;
+  double stdev = wbArg_getInputStdev(args);
   filterSize = 2*ceil(stdev) + 1;
 
   // Fill the gaussian filter
