@@ -23,7 +23,9 @@ int main(int argc, char *argv[])
     int imageChannels;
     int imageWidth;
     int imageHeight;
-    size_t filterSize = 3; // default value
+    float stDev;
+	float stDevSq;
+    size_t filterSize;
     char *inputImageFile;
     wbImage_t inputImage;
     wbImage_t outputImage;
@@ -52,7 +54,7 @@ int main(int argc, char *argv[])
 
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
-    filterSize = wbArg_getInputFilterSize(args);
+    stDev = wbArg_getInputStdev(args);
 
     // Import input image
     inputImage = wbImport(inputImageFile);
@@ -61,7 +63,7 @@ int main(int argc, char *argv[])
     imageWidth = wbImage_getWidth(inputImage);
     imageHeight = wbImage_getHeight(inputImage);
     imageChannels = wbImage_getChannels(inputImage);
-
+    
     // Define new output image
     outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
 
@@ -79,10 +81,6 @@ int main(int argc, char *argv[])
 
     // Start memory allocation timer
     wbTime_start(GPU, "Doing memory allocation");
-
-    // Fill the gaussian filter
-    double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
-    populate_blur_filter(filter, filterSize);
 
     // Allocate memory on host
     GrayImageData = (float *)calloc(imageHeight * imageWidth, sizeof(float));
@@ -103,6 +101,28 @@ int main(int argc, char *argv[])
     // Stop memory allocation timer
     wbTime_stop(GPU, "Doing memory allocation");
 
+
+    /////////////////////////
+    // Image Preprocessing //
+    /////////////////////////
+
+
+	// Calculate the filter size
+    filterSize = ceil(stDev * 6);
+	filterSize = (filterSize % 2 == 0) ? filterSize + 1 : filterSize;
+
+	// Calculate the filter variance
+	stDevSq = stDev * stDev;
+
+	//#ifdef (PRINT_DEBUG)
+		printf("\n");
+		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
+	//#endif
+
+    // Fill the gaussian filter
+    double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
+    populate_blur_filter(filter, filterSize, stDevSq);
+    
 
     ////////////////////
     // Host Execution //
@@ -162,13 +182,13 @@ int main(int argc, char *argv[])
 
 
     // Copy image data for output image (choose 1 - can only log one at a time for now
-    // memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
-    // memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, GradPhaseData, imageHeight*imageWidth*sizeof(float));
     //memcpy(outData, NmsImageData, imageHeight * imageWidth * sizeof(float));
-     memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
-    //memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
+    //memcpy(outData, weakEdgeImage, imageHeight*imageWidth*sizeof(float));
+    memcpy(outData, edgeImage, imageHeight*imageWidth*sizeof(float));
 
     // Export image
     char *oFile = wbArg_getOutputFile(args);
@@ -180,7 +200,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
-    #if (PRINT_DEBUG)
+    //#if (PRINT_DEBUG)
         // FILE *testThin = fopen("nmsThin.txt", "w");
         // for(int x = 0; x < imageWidth; ++x)
         //{
@@ -204,13 +224,13 @@ int main(int argc, char *argv[])
         printf("Histogram[49] = %u\n", histogram[49]);
         printf("Histogram[56] = %u\n", histogram[56]);
         printf("Histogram[255] = %u\n", histogram[255]);
-        printf("Image[0] = %f\n", GrayImageData[0]);
-        printf("Image[1] = %f\n", GrayImageData[1]);
-        printf("Image[36] = %f\n", GrayImageData[36]);
-        printf("Image[400] = %f\n", GrayImageData[400]);
-        printf("Image[900] = %f\n", GrayImageData[900]);
-        printf("Image[1405] = %f\n", GrayImageData[1405]);
-        printf("Image[85000] = %f\n", GrayImageData[85000]);
+        printf("Blurred Image[0] = %f\n", BlurImageData[0]);
+        printf("Blurred Image[1] = %f\n", BlurImageData[1]);
+        printf("Blurred Image[36] = %f\n", BlurImageData[36]);
+        printf("Blurred Image[400] = %f\n", BlurImageData[400]);
+        printf("Blurred Image[900] = %f\n", BlurImageData[900]);
+        printf("Blurred Image[1405] = %f\n", BlurImageData[1405]);
+        printf("Blurred Image[85000] = %f\n", BlurImageData[85000]);
         for (size_t row = 0; row < filterSize; ++row)
         {
             printf("Row=%ld of Gaussian filter = ", row);
@@ -222,7 +242,7 @@ int main(int argc, char *argv[])
         }
         printf("Otsu's Threshold = %f\n", thresh);
         printf("\n");
-    #endif
+    //#endif
 
 
     //////////////

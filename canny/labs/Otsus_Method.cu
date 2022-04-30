@@ -17,7 +17,7 @@ void Histogram_Sequential(float *image, unsigned int *hist, int width, int heigh
     }
 }
 
-double Otsu_Sequential(unsigned int *histogram, int width, int height)
+float Otsu_Sequential(unsigned int *histogram, int width, int height)
 {
 
     float histogram_bin_mids[256];
@@ -29,13 +29,12 @@ double Otsu_Sequential(unsigned int *histogram, int width, int height)
     float mean2[256];
     float inter_class_variance[255];
     float max_variance = 0;
-
     int thresh = 0;
 
     float bin_length = 255.0f / 256.0f;
     float half_bin_length = 255.0f / 512.0f;
 
-    // Calculate bin mids
+// Calculate bin mids
     for (int i = 0; i < 256; i++)
     {
         histogram_bin_mids[i] = histogram[i] * (half_bin_length + bin_length * i);
@@ -69,13 +68,13 @@ double Otsu_Sequential(unsigned int *histogram, int width, int height)
         mean2[i] = (weight2[i] == 0) ? 0 : mean2[i];
     }
 
-    // Calculate Inter_class_variance
+// Calculate Inter_class_variance
     for (int i = 0; i < 255; i++)
     {
         inter_class_variance[i] = (weight1[i] * weight2[i] * (mean1[i] - mean2[i + 1])) * (mean1[i] - mean2[i + 1]);
     }
 
-    // Maximize interclass variance
+// Maximize interclass variance
     for (int i = 0; i < 255; i++)
     {
         if (max_variance < inter_class_variance[i])
@@ -89,7 +88,7 @@ double Otsu_Sequential(unsigned int *histogram, int width, int height)
     return (half_bin_length + bin_length * thresh) / 255;
 }
 
-double Otsu_Sequential_Optimized(unsigned int *histogram, int width, int height)
+float Otsu_Sequential_Optimized(unsigned int *histogram, int width, int height)
 {
 
     float histogram_bin_mids[256];
@@ -150,8 +149,7 @@ double Otsu_Sequential_Optimized(unsigned int *histogram, int width, int height)
     }
 
 // Maximize interclass variance
-#pragma omp parallel for private(i) reduction(max \
-                                              : max_variance, thresh)
+#pragma omp parallel for private(i) reduction(max : max_variance, thresh)
     for (int i = 0; i < 255; i++)
     {
         if (max_variance < inter_class_variance[i])
