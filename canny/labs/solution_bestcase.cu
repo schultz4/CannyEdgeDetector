@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 
     // Allocate memory on host and initialize to 0
     hostHistogram = (unsigned int *)malloc(256 * sizeof(unsigned int));
-	hostThresh = (float *)malloc(sizeof(float));
+    hostThresh = (float *)malloc(sizeof(float));
 
 
 	/////////////////////////
@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
         hostThresh[0] = Otsu_Sequential_Optimized(hostHistogram, imageWidth, imageHeight);
     wbTime_stop(Compute, "Otsu's computation");
 
-    cudaMemcpy(deviceThresh, hostThresh, sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(deviceThresh, hostThresh, sizeof(float), cudaMemcpyHostToDevice);
 
     // Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
     // memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
-       memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
+    memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
 
     // Export image
     char *oFile = wbArg_getOutputFile(args);
