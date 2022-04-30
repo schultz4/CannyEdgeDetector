@@ -4,23 +4,22 @@
 //  gradient descent = GradientSobel
 
 #include "filters.h"
-__constant__ float sharedfilter[100]; 
+__constant__ float sharedfilter[100];
 #define FILTERSIZE 3
 #define BLOCKSIZE 16
 
+///////////////////////////////////////////////////////////////////////////////////
+// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the //
+// image width and height                                                        //
+// and outputs outImg:  blurred image of width*height                            //
+// This is a slightly optimized version                                          //
+///////////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////
-// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the
-// image width and height
-//and outputs outImg:  blurred image of width*height
-// This is a slightly optimized version
-/////////////////////////////////////////////////////////
 __global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
-    int halfFilter = (int)(filterSize/2);
+    int halfFilter = (int)(filterSize / 2);
 
     // boundary check if it's in the image
     if (row >= 0 && row < height && col >= 0 && col < width)
@@ -45,23 +44,25 @@ __global__ void Conv2DOpt(float *inImg, float *outImg, double *filter, int width
             }
         }
 
-        // save the pixel values 
+        // save the pixel values
         __threadfence();
         outImg[row * width + col] = pixelvalue;
     }
 }
 
-////////////////////////////////////////////////////////
-// Conv2DOptRow inputs: inImg: float  grayscale image, the gaussian filter, and the
-// image width and height
-//and outputs outImg:  a row dimension blurred image of width*height
-// This is half of the Conv2D function, needs to be paired with Conv2DOptCol
-/////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////
+// Conv2DOptRow inputs: inImg: float  grayscale image, the gaussian filter, and the //
+// image width and height                                                           //
+// and outputs outImg:  a row dimension blurred image of width*height               //
+// This is half of the Conv2D function, needs to be paired with Conv2DOptCol        //
+//////////////////////////////////////////////////////////////////////////////////////
+
 __global__ void Conv2DOptRow(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
-    int halfFilter =(int)(filterSize/2);
+    int halfFilter = (int)(filterSize / 2);
 
     // boundary check if it's in the image
     if (row >= 0 && row < height && col >= 0 && col < width)
@@ -87,17 +88,19 @@ __global__ void Conv2DOptRow(float *inImg, float *outImg, double *filter, int wi
     }
 }
 
-////////////////////////////////////////////////////////
-// Conv2DOptCol inputs: inImg: float  row-wise blurred image, the gaussian filter, and the
-// image width and height
-//and outputs outImg:  a gaussian blurred image of width*height
-// This is a partner with the Conv2DOoptRow, which must be run first
-/////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Conv2DOptCol inputs: inImg: float  row-wise blurred image, the gaussian filter, and the //
+// image width and height                                                                  //
+// and outputs outImg:  a gaussian blurred image of width*height                           //
+// This is a partner with the Conv2DOoptRow, which must be run first                       //
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 __global__ void Conv2DOptCol(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
-    int halfFilter = (int)(filterSize/2);
+    int halfFilter = (int)(filterSize / 2);
 
     if (row >= 0 && row < height && col >= 0 && col < width)
     {
@@ -122,13 +125,15 @@ __global__ void Conv2DOptCol(float *inImg, float *outImg, double *filter, int wi
     }
 }
 
-////////////////////////////////////////////////////////
-// GradientSobelOpt inputs: inImg: float  grayscale gaussian blurred image, 
-// , and the image width and height 
-// and outputs sobelImg:  magnitude of the gradients image of width*height
-// output: gradientImg: the phase of the gradients in an image of width*height
-// This is an unrolled optimized version
-/////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////
+// GradientSobelOpt inputs: inImg: float  grayscale gaussian blurred image,    //
+// , and the image width and height                                            //
+// and outputs sobelImg:  magnitude of the gradients image of width*height     //
+// output: gradientImg: the phase of the gradients in an image of width*height //
+// This is an unrolled optimized version                                       //
+/////////////////////////////////////////////////////////////////////////////////
+
 __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientImg, int height, int width)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -200,15 +205,17 @@ __global__ void GradientSobelOpt(float *inImg, float *sobelImg, float *gradientI
     }
 }
 
-////////////////////////////////////////////////////////
-// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the
-// image width and height
-//and outputs outImg:  blurred image of width*height
-// This is a slightly optimized version--it's only faster if the filtersize is bigger than 3.
-/////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the              //
+// image width and height                                                                     //
+// and outputs outImg:  blurred image of width*height                                         //
+// This is a slightly optimized version--it's only faster if the filtersize is bigger than 3. //
+////////////////////////////////////////////////////////////////////////////////////////////////
+
 __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
-    int halfFilter = (int)(filterSize/2);
+    int halfFilter = (int)(filterSize / 2);
 
     int TILESIZE = BLOCKSIZE - FILTERSIZE + 1;
     int tx = threadIdx.x;
@@ -253,10 +260,9 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
                 int currentcol = j + cornercol;
                 if (currentrow >= 0 && currentcol >= 0 && currentrow < height && currentcol < width)
                 {
-  		    pval += tile[currentrow][currentcol] * filter[j*width+i];   
-
-		}
-             }
+                    pval += tile[currentrow][currentcol] * filter[j * width + i];
+                }
+            }
         }
         __syncthreads();
         // after every iteration then write to the output
@@ -269,13 +275,14 @@ __global__ void Conv2DTiled(float *inImg, float *outImg, double *filter, int wid
 }
 
 
-////////////////////////////////////////////////////////
-// GradientSobelOpt inputs: inImg: float  grayscale gaussian blurred image, 
-// , and the image width and height 
-// and outputs sobelImg:  magnitude of the gradients image of width*height
-// output: gradientImg: the phase of the gradients in an image of width*height
-// This is a Tiled version: because the filters are 3x3 it's a slower version
-/////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+// GradientSobelOpt inputs: inImg: float  grayscale gaussian blurred image,    //
+// , and the image width and height                                            //
+// and outputs sobelImg:  magnitude of the gradients image of width*height     //
+// output: gradientImg: the phase of the gradients in an image of width*height //
+// This is a Tiled version: because the filters are 3x3 it's a slower version  //
+/////////////////////////////////////////////////////////////////////////////////
+
 __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradientImg, int height, int width)
 {
     int filterSize = (int)FILTERSIZE;
@@ -351,42 +358,13 @@ __global__ void GradientSobelTiled(float *inImg, float *sobelImg, float *gradien
 }
 
 
-////////////////////////////////////////////////////////
-// populate_blur_filter inputs: inImg: the input grayscale image
-// the width and the height of the image 
-// and outputs stdev, the standard deviation of the center row
-/////////////////////////////////////////////////////////
-float get_std(float *inImg, int width, int height){
-    // sum the center row for std approximation
-    float summation = 0;
-    int row = floor(height/2);
-    int col = floor(width/2);
-    for(int i = 0; i < width; i++) {
-       summation += inImg[row*width+i];
-    }
-    for(int i = 0; i < height; i++) {
-       summation += inImg[(row+i)*width+col];
-    }
-    float mean = summation / (width + height);
-    float variance = 0;
-    for(int i = 0; i < width; i++) {
-       variance += pow(inImg[row*width+i] - mean, 2); 
-    }
-    for(int i = 0; i < height; i++) {
-       variance += pow(inImg[(row+i)*width+col] - mean, 2);
-    }
-    float stdev = sqrt(variance/(width+height));
-    return stdev;
-}
+//////////////////////////////////////////////////////////////////////////////////////////////
+// populate_blur_filter inputs: filterEdgeLength: the size of the filter (square filter)    //
+// and outputs outFilter: a gaussian calculated that is FilterEdgeLen x FilterEdgeLen sized //
+//////////////////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////
-// populate_blur_filter inputs: filterEdgeLength: the size of the filter (square filter) 
-// and outputs outFilter: a gaussian calculated that is FilterEdgeLen x FilterEdgeLen sized
-/////////////////////////////////////////////////////////
 void populate_blur_filter(double *outFilter, size_t filterEdgeLen, float stDevSq)
 {
-    // double scaleVal = 1;
-    // double stDev = (double)FILTERSIZE/3;
 
     double pi = M_PI;
     double scaleFac = (1 / (2 * pi * stDevSq));
@@ -410,12 +388,14 @@ void populate_blur_filter(double *outFilter, size_t filterEdgeLen, float stDevSq
     }
 }
 
-////////////////////////////////////////////////////////
-// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, 
-// , and the image width and height (x & y)
-// and outputs output:  grayscale image of width*height
-// This is a serialized version
-/////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////
+// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, //
+// , and the image width and height (x & y)                         //
+// and outputs output:  grayscale image of width*height             //
+// This is a serialized version                                     //
+//////////////////////////////////////////////////////////////////////
+
 void ColorToGrayscaleSerial(float *input, float *output,
                             unsigned int y, unsigned int x)
 {
@@ -432,13 +412,15 @@ void ColorToGrayscaleSerial(float *input, float *output,
     }
 }
 
+
 // convert the image to grayscale
-////////////////////////////////////////////////////////
-// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, 
-// , and the image width and height (x & y)
-// and outputs output:  grayscale image of width*height
-// This is a CUDA version
-/////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, //
+// , and the image width and height (x & y)                         //
+// and outputs output:  grayscale image of width*height             //
+// This is a CUDA version                                           //
+//////////////////////////////////////////////////////////////////////
+
 __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int height)
 {
     int idx, grayidx;
@@ -460,13 +442,15 @@ __global__ void ColorToGrayscale(float *inImg, float *outImg, int width, int hei
     }
 }
 
+
 // the gaussian blur is just a conv2d with a filter
-////////////////////////////////////////////////////////
-// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the
-// image width and height
-//and outputs outImg:  blurred image of width*height
-// This is an unoptimized CUDA version
-/////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+// Conv2DOpt inputs: inImg: float  grayscale image, the gaussian filter, and the //
+// image width and height                                                        //
+// and outputs outImg:  blurred image of width*height                            //
+// This is an unoptimized CUDA version                                           //
+///////////////////////////////////////////////////////////////////////////////////
+
 __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -501,13 +485,15 @@ __global__ void Conv2D(float *inImg, float *outImg, double *filter, int width, i
     }
 }
 
-////////////////////////////////////////////////////////
-// GradientSobel inputs: inImg: float  grayscale gaussian blurred image, 
-// , and the image width and height 
-// and outputs sobelImg:  magnitude of the gradients image of width*height
-// output: gradientImg: the phase of the gradients in an image of width*height
-// This is an unoptimized CUDA  version
-/////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////
+// GradientSobel inputs: inImg: float  grayscale gaussian blurred image,       //
+// , and the image width and height                                            //
+// and outputs sobelImg:  magnitude of the gradients image of width*height     //
+// output: gradientImg: the phase of the gradients in an image of width*height //
+// This is an unoptimized CUDA  version                                        //
+/////////////////////////////////////////////////////////////////////////////////
+
 __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg, int height, int width)
 {
     int filterSize = (int)FILTERSIZE;
@@ -562,12 +548,13 @@ __global__ void GradientSobel(float *inImg, float *sobelImg, float *gradientImg,
     }
 }
 
-////////////////////////////////////////////////////////
-// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, 
-// , and the image width and height (x & y)
-// and outputs output:  grayscale image of width*height
-// This is a serialized version
-/////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////
+// ColorToGrayscaleSerial inputs: input: a RGB image in ppm format, //
+// , and the image width and height (x & y)                         //
+// and outputs output:  grayscale image of width*height             //
+// This is a serialized version                                     //
+//////////////////////////////////////////////////////////////////////
 
 void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize)
 {
@@ -602,13 +589,15 @@ void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int he
     }
 }
 
-////////////////////////////////////////////////////////
-// GradientSobelSerial inputs: inImg: float  grayscale gaussian blurred image, 
-// , and the image width and height 
-// and outputs sobelImg:  magnitude of the gradients image of width*height
-// output: gradientImg: the phase of the gradients in an image of width*height
-// This is an unoptimized serial version
-/////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////// 
+// GradientSobelSerial inputs: inImg: float  grayscale gaussian blurred image, //
+// , and the image width and height                                            //
+// and outputs sobelImg:  magnitude of the gradients image of width*height     //
+// output: gradientImg: the phase of the gradients in an image of width*height //
+// This is an unoptimized serial version                                       //
+/////////////////////////////////////////////////////////////////////////////////
+
 void GradientSobelSerial(float *inImg, float *mag, float *phase, int height, int width)
 {
 

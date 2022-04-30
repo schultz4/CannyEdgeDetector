@@ -38,7 +38,8 @@ int main(int argc, char *argv[])
     int imageChannels;
     int imageWidth;
     int imageHeight;
-    float stdev;
+    float stDev;
+	float stDevSq;
     size_t filterSize = 3;
     char *inputImageFile;
     wbImage_t inputImage;
@@ -81,9 +82,9 @@ int main(int argc, char *argv[])
 
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
-    stdev = wbArg_getInputStdev(args);
-    std::cout << "DEBUG: stdev=" << stdev << "\n";
-    filterSize = 2*ceil(stdev/40.0) + 1;
+    stDev = wbArg_getInputStdev(args);
+    std::cout << "DEBUG: stdev=" << stDev << "\n";
+
     // Import input image
     inputImage = wbImport(inputImageFile);
 
@@ -133,14 +134,23 @@ int main(int argc, char *argv[])
     /////////////////////////
 
 
+	// Calculate the filter size
+    filterSize = ceil(stDev * 6);
+	filterSize = (filterSize % 2 == 0) ? filterSize + 1 : filterSize;
+
+	// Calculate the filter variance
+	stDevSq = stDev * stDev;
+
+	//#ifdef (PRINT_DEBUG)
+		printf("\n");
+		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
+	//#endif
+
     // Create filter skeleton
     // double filter[FILTERSIZE][FILTERSIZE];
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     double *deviceFilter;
-    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
-
-    // Fill the gaussian filter
-    populate_blur_filter(filter, filterSize, stdev);
+    populate_blur_filter(filter, filterSize, stDevSq);
 
 
     //////////////////////////////////
@@ -159,6 +169,7 @@ int main(int argc, char *argv[])
     wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceHistogram, 256 * sizeof(unsigned int)));
     wbCheck(cudaMalloc((void **)&deviceThresh, sizeof(float)));
+    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
 
     // Initialize cuda memory
     wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
@@ -190,11 +201,11 @@ int main(int argc, char *argv[])
 
     // Initialize x and y block dimension to blocksize
     dim3 BlockDim(blocksize, blocksize);
-    dim3 histBlockDim(1024);
+    dim3 histBlockDim(512);
 
     // Set x and y grid dimension
     dim3 GridDim(((imageWidth + BlockDim.x - 1) / BlockDim.x), ((imageHeight + BlockDim.y - 1) / BlockDim.y));
-    dim3 histGridDim((imageWidth * imageHeight + 512 - 1) / 512);
+    dim3 histGridDim((imageWidth * imageHeight + histBlockDim.x - 1) / histBlockDim.x);
 
     // Call RGB to grayscale conversion kernel
     wbTime_start(Compute, "ColorToGrayscale computation");
@@ -299,7 +310,7 @@ int main(int argc, char *argv[])
 
 
     // Print info
-    #if (PRINT_DEBUG)
+    //#if (PRINT_DEBUG)
         printf("\n");
         printf("Width = %u\n", imageWidth);
         printf("Height = %u\n", imageHeight);
@@ -310,13 +321,13 @@ int main(int argc, char *argv[])
         printf("Host Histogram[49] = %u\n", hostHistogram[49]);
         printf("Host Histogram[56] = %u\n", hostHistogram[56]);
         printf("Host Histogram[255] = %u\n", hostHistogram[255]);
-        printf("Image[0] = %f\n", hostGrayImageData[0]);
-        printf("Image[1] = %f\n", hostGrayImageData[1]);
-        printf("Image[36] = %f\n", hostGrayImageData[36]);
-        printf("Image[400] = %f\n", hostGrayImageData[400]);
-        printf("Image[900] = %f\n", hostGrayImageData[900]);
-        printf("Image[1405] = %f\n", hostGrayImageData[1405]);
-        printf("Image[85000] = %f\n", hostGrayImageData[85000]);
+        printf("Blurred Image[0] = %f\n", hostBlurImageData[0]);
+        printf("Blurred Image[1] = %f\n", hostBlurImageData[1]);
+        printf("Blurred Image[36] = %f\n", hostBlurImageData[36]);
+        printf("Blurred Image[400] = %f\n", hostBlurImageData[400]);
+        printf("Blurred Image[900] = %f\n", hostBlurImageData[900]);
+        printf("Blurred Image[1405] = %f\n", hostBlurImageData[1405]);
+        printf("Blurred Image[85000] = %f\n", hostBlurImageData[85000]);
 
         for (size_t row = 0; row < filterSize; ++row)
         {
@@ -330,7 +341,7 @@ int main(int argc, char *argv[])
 
         printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
         printf("\n");
-    #endif
+    //#endif
 
 
     //////////////

@@ -67,12 +67,13 @@ cuda_memcheck=""
 count=0
 for i in ${PATHS[@]}
 do
-  for dev in 0.12345 1.6 3.14 6.022
+  #for dev in 0.12345 1.6 3.14 6.022 #this just takes forever while debugging
+   for dev in 0.8
   do
    file=output$((count)).txt
    imgOutFile=outputImg$((count)).ppm
-   echo "cmd: ${cuda_memcheck} ./CannyImage_Solution_Best -d ${dev} -o ${hw_path}/CannyImage_output/best_$dev_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/best_$dev_$file"
-   ${cuda_memcheck} ./CannyImage_Solution_Best -d $dev -o ${hw_path}/CannyImage_output/best_$dev_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/best_$dev_$file
+   echo "cmd: ${cuda_memcheck} ./CannyImage_Solution_Best -d ${dev} -o ${hw_path}/CannyImage_output/best_$dev_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/best_${dev}_$file"
+   ${cuda_memcheck} ./CannyImage_Solution_Best -d ${dev} -o ${hw_path}/CannyImage_output/best_$dev_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/best_${dev}_$file
 
    echo "cmd: ${cuda_memcheck} ./CannyImage_Solution -d ${dev} -o ${hw_path}/CannyImage_output/gpu_${dev}_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_${dev}_$file"
    ${cuda_memcheck} ./CannyImage_Solution -d ${dev} -o ${hw_path}/CannyImage_output/gpu_${dev}_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/gpu_${dev}_$file 
@@ -93,5 +94,4 @@ do
    count=$((count+1))
  done
 done
-
 

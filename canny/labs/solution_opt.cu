@@ -34,7 +34,9 @@ int main(int argc, char *argv[])
     int imageChannels;
     int imageWidth;
     int imageHeight;
-    size_t filterSize = 3;
+    float stDev;
+	float stDevSq;
+    size_t filterSize;
     char *inputImageFile;
     wbImage_t inputImage;
     wbImage_t outputImage;
@@ -75,7 +77,8 @@ int main(int argc, char *argv[])
 
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
-    filterSize = wbArg_getInputFilterSize(args);
+    stDev = wbArg_getInputStdev(args);
+    std::cout << "DEBUG: stdev=" << stDev << "\n";
 
     // Import input image
     inputImage = wbImport(inputImageFile);
@@ -90,10 +93,8 @@ int main(int argc, char *argv[])
 
     // Initialize memory for the output image
     // Note - input image is 3 channels. Other phases only have 1 channel
-    // float *outData = (float *)calloc(imageHeight*imageWidth*imageChannels,sizeof(float));
     float *outData = (float *)calloc(imageHeight * imageWidth, sizeof(float));
     outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
-
 
     ////////////////////////////////
     // Host Memory Initialization //
@@ -127,9 +128,23 @@ int main(int argc, char *argv[])
     /////////////////////////
 
 
+	// Calculate the filter size
+    filterSize = ceil(stDev * 6);
+	filterSize = (filterSize % 2 == 0) ? filterSize + 1 : filterSize;
+
+	// Calculate the filter variance
+	stDevSq = stDev * stDev;
+
+	//#ifdef (PRINT_DEBUG)
+		printf("\n");
+		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
+	//#endif
+
     // Create filter skeleton
     // double filter[FILTERSIZE][FILTERSIZE];
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
+    double *deviceFilter;
+    populate_blur_filter(filter, filterSize, stDevSq);
 
 
     //////////////////////////////////
@@ -149,6 +164,7 @@ int main(int argc, char *argv[])
     wbCheck(cudaMalloc((void **)&deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float)));
     wbCheck(cudaMalloc((void **)&deviceHistogram, 256 * sizeof(unsigned int)));
     wbCheck(cudaMalloc((void **)&deviceThresh, sizeof(float)));
+    wbCheck(cudaMalloc((void **)&deviceFilter, filterSize * filterSize * sizeof(double)));
 
     // Initialize cuda memory
     wbCheck(cudaMemset(deviceHistogram, 0, 256 * sizeof(unsigned int)));
@@ -162,6 +178,7 @@ int main(int argc, char *argv[])
     wbTime_start(Copy, "Copying data to the GPU");
 
     // Copy input image from host to device
+    wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
@@ -186,6 +203,7 @@ int main(int argc, char *argv[])
     dim3 histGridDim((imageWidth * imageHeight + histBlockDim.x - 1) / histBlockDim.x);
     dim3 GridDiff(((imageWidth + 14 - 1) / 14), ((imageHeight + 14 - 1) / 14));
 
+/*
     // Call RGB to grayscale conversion kernel
   // Create filter skeleton
   //double filter[FILTERSIZE][FILTERSIZE];
@@ -200,7 +218,7 @@ int main(int argc, char *argv[])
   cudaMemcpyToSymbol(sharedfilter, &filter, filterSize * sizeof(float));
   // ?????
   //int filterSize = (int)FILTERSIZE;
-
+*/
 
     wbTime_start(Compute, "ColorToGrayscale computation");
     	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
@@ -209,9 +227,9 @@ int main(int argc, char *argv[])
 
     // Call image burring kernel
     wbTime_start(Compute, "Conv2D computation");
-		Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-		//Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlur1ImageData, deviceFilter, imageWidth, imageHeight, filterSize);
-		//Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlur1ImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+		//Conv2DTiled<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+		Conv2DOptRow<<<GridDiff, BlockDim>>>(deviceGrayImageData, deviceBlur1ImageData, deviceFilter, imageWidth, imageHeight, filterSize);
+		Conv2DOptCol<<<GridDiff, BlockDim>>>(deviceBlur1ImageData, deviceBlurImageData, deviceFilter, imageWidth, imageHeight, filterSize);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Conv2D computation");
 
@@ -305,7 +323,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
-#if (PRINT_DEBUG)
+//#if (PRINT_DEBUG)
 
     // Print info
     printf("\n");
@@ -318,13 +336,13 @@ int main(int argc, char *argv[])
     printf("Host Histogram[49] = %u\n", hostHistogram[49]);
     printf("Host Histogram[56] = %u\n", hostHistogram[56]);
     printf("Host Histogram[255] = %u\n", hostHistogram[255]);
-    printf("Image[0] = %f\n", hostGrayImageData[0]);
-    printf("Image[1] = %f\n", hostGrayImageData[1]);
-    printf("Image[36] = %f\n", hostGrayImageData[36]);
-    printf("Image[400] = %f\n", hostGrayImageData[400]);
-    printf("Image[900] = %f\n", hostGrayImageData[900]);
-    printf("Image[1405] = %f\n", hostGrayImageData[1405]);
-    printf("Image[85000] = %f\n", hostGrayImageData[85000]);
+    printf("Blurred Image[0] = %f\n", hostBlurImageData[0]);
+    printf("Blurred Image[1] = %f\n", hostBlurImageData[1]);
+    printf("Blurred Image[36] = %f\n", hostBlurImageData[36]);
+    printf("Blurred Image[400] = %f\n", hostBlurImageData[400]);
+    printf("Blurred Image[900] = %f\n", hostBlurImageData[900]);
+    printf("Blurred Image[1405] = %f\n", hostBlurImageData[1405]);
+    printf("Blurred Image[85000] = %f\n", hostBlurImageData[85000]);
 
     for (size_t row = 0; row < filterSize; ++row)
     {
@@ -350,7 +368,7 @@ int main(int argc, char *argv[])
     // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
     printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
     // printf("\n");
-#endif
+//#endif
 
 
     //////////////
