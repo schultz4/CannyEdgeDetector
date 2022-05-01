@@ -34,7 +34,7 @@ float Otsu_Sequential(unsigned int *histogram, int width, int height)
     float bin_length = 255.0f / 256.0f;
     float half_bin_length = 255.0f / 512.0f;
 
-// Calculate bin mids
+    // Calculate bin mids
     for (int i = 0; i < 256; i++)
     {
         histogram_bin_mids[i] = histogram[i] * (half_bin_length + bin_length * i);
@@ -68,13 +68,13 @@ float Otsu_Sequential(unsigned int *histogram, int width, int height)
         mean2[i] = (weight2[i] == 0) ? 0 : mean2[i];
     }
 
-// Calculate Inter_class_variance
+    // Calculate Inter_class_variance
     for (int i = 0; i < 255; i++)
     {
         inter_class_variance[i] = (weight1[i] * weight2[i] * (mean1[i] - mean2[i + 1])) * (mean1[i] - mean2[i + 1]);
     }
 
-// Maximize interclass variance
+    // Maximize interclass variance
     for (int i = 0; i < 255; i++)
     {
         if (max_variance < inter_class_variance[i])
@@ -149,7 +149,8 @@ float Otsu_Sequential_Optimized(unsigned int *histogram, int width, int height)
     }
 
 // Maximize interclass variance
-#pragma omp parallel for private(i) reduction(max : max_variance, thresh)
+#pragma omp parallel for private(i) reduction(max \
+                                              : max_variance, thresh)
     for (int i = 0; i < 255; i++)
     {
         if (max_variance < inter_class_variance[i])
@@ -225,7 +226,7 @@ __global__ void OptimizedHistogram(float *image, unsigned int *histogram, int wi
 __global__ void OptimizedHistogramReplication(float *image, unsigned int *histogram, int width, int height)
 {
     // Make sure to call this kernel with 1024 threads per block
-    const int R = 20;
+    const int R = 8;
 
     __shared__ unsigned int hist_private[(256 + 1) * R];
 

@@ -115,8 +115,8 @@ int main(int argc, char *argv[])
 	stDevSq = stDev * stDev;
 
 	//#ifdef (PRINT_DEBUG)
-		printf("\n");
-		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
+		//printf("\n");
+		//printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
 	//#endif
 
     // Fill the gaussian filter
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
-    //#if (PRINT_DEBUG)
+    #if (PRINT_DEBUG)
         // FILE *testThin = fopen("nmsThin.txt", "w");
         // for(int x = 0; x < imageWidth; ++x)
         //{
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
         }
         printf("Otsu's Threshold = %f\n", thresh);
         printf("\n");
-    //#endif
+    #endif
 
 
     //////////////

@@ -82,7 +82,6 @@ int main(int argc, char *argv[])
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
     stDev = wbArg_getInputStdev(args);
-    std::cout << "DEBUG: stdev=" << stDev << "\n";
 
     // Import input image
     inputImage = wbImport(inputImageFile);
@@ -123,7 +122,7 @@ int main(int argc, char *argv[])
 
     // Allocate memory on host and initialize to 0
     hostHistogram = (unsigned int *)malloc(256 * sizeof(unsigned int));
-    hostThresh = (float *)malloc(sizeof(float));
+	hostThresh = (float *)malloc(sizeof(float));
 
 
 	/////////////////////////
@@ -138,13 +137,14 @@ int main(int argc, char *argv[])
 	// Calculate the filter variance
 	stDevSq = stDev * stDev;
 
-	//#ifdef (PRINT_DEBUG)
+    /* Not sure what the error here is
+	#ifdef (PRINT_DEBUG)
 		printf("\n");
 		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
-	//#endif
+	#endif
+    */
 
     // Create filter skeleton
-    // double filter[FILTERSIZE][FILTERSIZE];
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     double *deviceFilter;
     populate_blur_filter(filter, filterSize, stDevSq);
@@ -198,13 +198,12 @@ int main(int argc, char *argv[])
 
     // Initialize x and y block dimension to blocksize
     dim3 BlockDim(blocksize, blocksize);
-    dim3 histBlockDim(512);
+    dim3 histBlockDim(1024);
 
     // Set x and y grid dimension
     dim3 GridDim(((imageWidth + BlockDim.x - 1) / BlockDim.x), ((imageHeight + BlockDim.y - 1) / BlockDim.y));
     dim3 histGridDim((imageWidth * imageHeight + histBlockDim.x - 1) / histBlockDim.x);
     dim3 GridDiff(((imageWidth + 14 - 1) / 14), ((imageHeight + 14 - 1) / 14));
-
 
     // Call RGB to grayscale conversion kernel
     wbTime_start(Compute, "ColorToGrayscale computation");
@@ -232,13 +231,10 @@ int main(int argc, char *argv[])
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
     wbTime_start(Compute, "Histogram computation");
-    	NaiveHistogram<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
-    	//OptimizedHistogram<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
-    	//OptimizedHistogramReplication<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
+    	OptimizedHistogramReplication<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 
-    //wbCheck(cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost));
     cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
     // Stop computation timer
@@ -248,6 +244,7 @@ int main(int argc, char *argv[])
     wbTime_stop(Compute, "Otsu's computation");
 
     cudaMemcpy(deviceThresh, hostThresh, sizeof(float), cudaMemcpyHostToDevice);
+    wbCheck(cudaDeviceSynchronize());
 
     // Threshold detection global memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
@@ -273,13 +270,7 @@ int main(int argc, char *argv[])
     // Start device memory copy timer
     wbTime_start(Copy, "Copying data from the GPU");
 
-    // Copy data from device back to host
-    cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    // Only time one copy
     cudaMemcpy(hostEdgeData, deviceEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Stop memory timer
@@ -288,6 +279,13 @@ int main(int argc, char *argv[])
     // Stop total program timer
     wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
+    // Copy data from device back to host
+    cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
     ////////////////////////
     // Logging and Output //
@@ -302,7 +300,7 @@ int main(int argc, char *argv[])
     // memcpy(outData, hostGradPhaseData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostNmsImageData, imageHeight*imageWidth*sizeof(float));
     // memcpy(outData, hostWeakEdgeData, imageHeight*imageWidth*sizeof(float));
-    memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
+       memcpy(outData, hostEdgeData, imageHeight * imageWidth * sizeof(float));
 
     // Export image
     char *oFile = wbArg_getOutputFile(args);
@@ -313,8 +311,7 @@ int main(int argc, char *argv[])
     // Debugging Info //
     ////////////////////
 
-
-//#if (PRINT_DEBUG)
+#if (PRINT_DEBUG)
 
     // Print info
     printf("\n");
@@ -360,7 +357,8 @@ int main(int argc, char *argv[])
     // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
     printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
     // printf("\n");
-//#endif
+#endif
+
 
     //////////////
 

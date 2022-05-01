@@ -116,7 +116,7 @@ __global__ void Conv2DOptCol(float *inImg, float *outImg, double *filter, int wi
             // only count the ones that are inside the boundaries
             if (cur_row >= 0 && cur_row < height && cur_col >= 0 && cur_col < width)
             {
-                pixelvalue += inImg[cur_row * width + cur_col] * filter[filterSize + j] * filterSize ; //[k][j];
+                pixelvalue += inImg[cur_row * width + cur_col] * filter[filterSize + j] * filterSize; //[k][j];
             }
         }
         // save the blurred pixels
@@ -560,7 +560,7 @@ void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int he
 {
 
     // find center position of kernel (half of kernel size)
-    int filterHalf = filterSize / 2;
+    int filterHalf = (int)(filterSize / 2);
 
     // iterate over rows and coluns of the image
     for (int row = 0; row < height; ++row) // rows
