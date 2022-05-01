@@ -67,8 +67,8 @@ cuda_memcheck=""
 count=0
 for i in ${PATHS[@]}
 do
-  #for dev in 0.12345 1.6 3.14 6.022 #this just takes forever while debugging
-   for dev in 0.8
+  #for dev in 0.5 0.83 1.15 1.5 #this just takes forever while debugging
+  for dev in 0.83
   do
    file=output$((count)).txt
    imgOutFile=outputImg$((count)).ppm
@@ -85,13 +85,13 @@ do
    ${memcheck} ./CannyImage_Serial -d ${dev} -o ${hw_path}/CannyImage_output/serial_${dev}_$imgOutFile -i $i/input.ppm -t image &> ${hw_path}/CannyImage_output/serial_${dev}_$file
 
    echo
-   python timingReport.py ${hw_path}/CannyImage_output/serial_$file ${hw_path}/CannyImage_output/gpu_$file ${hw_path}/CannyImage_output/opt_$file ${hw_path}/CannyImage_output/best_$file &> ${hw_path}/CannyImage_output/timing-report-img$((count)).txt
+   python timingReport.py ${hw_path}/CannyImage_output/serial_${dev}_$file ${hw_path}/CannyImage_output/gpu_${dev}_$file ${hw_path}/CannyImage_output/opt_${dev}_$file ${hw_path}/CannyImage_output/best_${dev}_$file &> ${hw_path}/CannyImage_output/timing-report-${dev}-img$((count)).txt
 
    #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/gpu_$imgOutFile
    #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/opt_$imgOutFile
    #diff ${hw_path}/CannyImage_output/serial_$imgOutFile ${hw_path}/CannyImage_output/best_$imgOutFile
 
+  done
    count=$((count+1))
- done
 done
 

@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     // Read input file
     inputImageFile = wbArg_getInputFile(args, 0);
     stDev = wbArg_getInputStdev(args);
-    std::cout << "DEBUG: stdev=" << stDev << "\n";
+    //std::cout << "DEBUG: stdev=" << stDev << "\n";
 
     // Import input image
     inputImage = wbImport(inputImageFile);
@@ -136,12 +136,11 @@ int main(int argc, char *argv[])
 	stDevSq = stDev * stDev;
 
 	//#ifdef (PRINT_DEBUG)
-		printf("\n");
-		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
+	//	printf("\n");
+	//	printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
 	//#endif
 
     // Create filter skeleton
-    // double filter[FILTERSIZE][FILTERSIZE];
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     double *deviceFilter;
     populate_blur_filter(filter, filterSize, stDevSq);
@@ -202,23 +201,6 @@ int main(int argc, char *argv[])
     dim3 GridDim(((imageWidth + BlockDim.x - 1) / BlockDim.x), ((imageHeight + BlockDim.y - 1) / BlockDim.y));
     dim3 histGridDim((imageWidth * imageHeight + histBlockDim.x - 1) / histBlockDim.x);
     dim3 GridDiff(((imageWidth + 14 - 1) / 14), ((imageHeight + 14 - 1) / 14));
-
-/*
-    // Call RGB to grayscale conversion kernel
-  // Create filter skeleton
-  //double filter[FILTERSIZE][FILTERSIZE];
-  double *sharedfilter = (double *)calloc(filterSize*filterSize, sizeof(double));
-  double *deviceFilter;
-  wbCheck(cudaMalloc((void **)&deviceFilter, filterSize*filterSize*sizeof(double)));
-  double stdev = wbArg_getInputStdev(args);
-  filterSize = 2*ceil(stdev) + 1;
-
-  // Fill the gaussian filter
-  populate_blur_filter(filter, filterSize, stdev);
-  cudaMemcpyToSymbol(sharedfilter, &filter, filterSize * sizeof(float));
-  // ?????
-  //int filterSize = (int)FILTERSIZE;
-*/
 
     wbTime_start(Compute, "ColorToGrayscale computation");
     	ColorToGrayscale<<<GridDim, BlockDim>>>(deviceInputImageData, deviceGrayImageData, imageWidth, imageHeight);
@@ -281,14 +263,6 @@ int main(int argc, char *argv[])
     wbTime_start(Copy, "Copying data from the GPU");
 
     // Copy data from device back to host
-    cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost);
-    cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostEdgeData, deviceEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Stop memory timer
@@ -297,6 +271,14 @@ int main(int argc, char *argv[])
     // Stop total program timer
     wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
+    cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostGradPhaseData, deviceGradPhaseData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostNmsImageData, deviceNmsImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostThresh, deviceThresh, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(hostWeakEdgeData, deviceWeakEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
     ////////////////////////
     // Logging and Output //
@@ -323,7 +305,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
-//#if (PRINT_DEBUG)
+#if (PRINT_DEBUG)
 
     // Print info
     printf("\n");
@@ -368,7 +350,7 @@ int main(int argc, char *argv[])
     // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
     printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
     // printf("\n");
-//#endif
+#endif
 
 
     //////////////
