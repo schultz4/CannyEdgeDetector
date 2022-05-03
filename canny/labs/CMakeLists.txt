@@ -87,7 +87,7 @@ if (APPLE)
 endif ()
 
 # Add debugging to CUDA NVCC flags (for NVidia's NSight tools)
-set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G")
+set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "-G -g")
 
 # Set the correct linker options on UNIX platforms
 # -lpthread inserted by ali akoglu  for compatiblity with elgato
