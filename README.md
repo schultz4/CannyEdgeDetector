@@ -14,9 +14,6 @@ module load cuda11/11.0
 While this project does make use of the libwb library, it is using 
 modifications and was forked into this project
 
-Images used for processing these runs can be found at
-```
-```
 ## Compile
 Run the following from the top-level directory
 ```
@@ -45,5 +42,12 @@ If you are running outside this directory, you will need to modify the
 directory
 
 # Project organization
-TODO - Fill me out
+## Image dataset for this project
+Images used for this experiment are stored in the git repository and can be
+found at
+```
+canny/build_dir/CannyImage/Dataset/<img_num>/input.ppm
+```
+There are 15 images stored for the experiments. Simply replace ```<img_num>```
+above with the digit coresponding to the image you wish to view.
 
