@@ -259,6 +259,7 @@ int main(int argc, char *argv[])
     free(histogram);
     free(weakEdgeImage);
     free(edgeImage);
+    free(filter);
 
     // Destroy images
     wbImage_delete(outputImage); // Handles free of outData
