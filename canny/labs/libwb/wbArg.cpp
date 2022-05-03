@@ -143,6 +143,7 @@ wbArg_t wbArg_read(int argc, char **argv) {
       printf("DEBUG: filter size=%s\n", size);
 #endif
       wbArg_setInputFilterSize(arg, atoi(size)); 
+      free(size);
     } else if (wbString_startsWith(argv[ii], "-d")) {
       // TODO - set filter size here
       char *stdev = parseString(argv[++ii]);
@@ -150,6 +151,7 @@ wbArg_t wbArg_read(int argc, char **argv) {
       printf("DEBUG: std deviation=%s\n", stdev);
 #endif
       wbArg_setInputStdev(arg, atof(stdev)); 
+      free(stdev);
     } else if (argv[ii][0] == '-') {
       wbLog(ERROR, "Unexpected program option ", argv[ii]);
     }

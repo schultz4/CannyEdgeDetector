@@ -174,6 +174,7 @@ int main(int argc, char *argv[])
 
     // Stop computation timer
     wbTime_stop(Compute, "Doing the computation");
+    wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
 
     ////////////////////////

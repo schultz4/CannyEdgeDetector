@@ -25,8 +25,8 @@ float Otsu_Sequential(unsigned int *histogram, int width, int height)
     unsigned int weight2[256];
     float cumsum_mean1[256];
     float cumsum_mean2[256];
-    float mean1[256];
-    float mean2[256];
+    float mean1[256] {};
+    float mean2[256] {};
     float inter_class_variance[255];
     float max_variance = 0;
     int thresh = 0;
@@ -71,6 +71,10 @@ float Otsu_Sequential(unsigned int *histogram, int width, int height)
     // Calculate Inter_class_variance
     for (int i = 0; i < 255; i++)
     {
+        //std::cout << "i=" << i << ", weight1[i]=" << weight1[i] << "\n";
+        //std::cout << "i=" << i << ", weight2[i]=" << weight2[i] << "\n";
+        //std::cout << "i=" << i << ", mean1[i]=" << mean1[i] << "\n";
+        //std::cout << "i=" << i << ", mean2[i + 1]=" << mean2[i + 1] << "\n";
         inter_class_variance[i] = (weight1[i] * weight2[i] * (mean1[i] - mean2[i + 1])) * (mean1[i] - mean2[i + 1]);
     }
 
