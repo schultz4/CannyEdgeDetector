@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     imageChannels = wbImage_getChannels(inputImage);
     
     // Define new output image
-    outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
+    //outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
 
     // Define output image data
     hostInputImageData = wbImage_getData(inputImage);
@@ -259,6 +259,7 @@ int main(int argc, char *argv[])
     free(histogram);
     free(weakEdgeImage);
     free(edgeImage);
+    free(filter);
 
     // Destroy images
     wbImage_delete(outputImage); // Handles free of outData

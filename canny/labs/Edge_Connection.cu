@@ -1,7 +1,7 @@
 #include "Edge_Connection.h"
 
 void threshold_detection_serial(float *image, float *weak_img, float *edges_img,
-                                double thresh_high, int width, int height)
+                                float thresh_high, int width, int height)
 {
 
     // Define lower threshold from higher threshold
