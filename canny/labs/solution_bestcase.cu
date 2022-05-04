@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
     hostEdgeData = (float *)malloc(imageHeight * imageWidth * sizeof(float));
     hostWeakEdgeData = (float *)malloc(imageHeight * imageWidth * sizeof(float));
 
-    // Allocate memory on host and initialize to 0
+    // Allocate memory on host
     hostHistogram = (unsigned int *)malloc(256 * sizeof(unsigned int));
 	hostThresh = (float *)malloc(sizeof(float));
 
@@ -136,13 +136,6 @@ int main(int argc, char *argv[])
 
 	// Calculate the filter variance
 	stDevSq = stDev * stDev;
-
-    /* Not sure what the error here is
-	#ifdef (PRINT_DEBUG)
-		printf("\n");
-		printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
-	#endif
-    */
 
     // Create filter skeleton
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
@@ -180,7 +173,10 @@ int main(int argc, char *argv[])
     // Start memory copy timer
     wbTime_start(Copy, "Copying data to the GPU");
 
+    // Copy Gaussian filter from host to device
     wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
+
+    // Copy input image from host to device
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
@@ -230,25 +226,27 @@ int main(int argc, char *argv[])
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
+    // Calculate histogram of nms image
     wbTime_start(Compute, "Histogram computation");
     	OptimizedHistogramReplication<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 
+    // Copy histogram to host to calculate threshold
     cudaMemcpy(hostHistogram, deviceHistogram, 256 * sizeof(unsigned int), cudaMemcpyDeviceToHost);
 
-    // Stop computation timer
     // Calculate threshold using Otsu's Method
     wbTime_start(Compute, "Otsu's computation");
         hostThresh[0] = Otsu_Sequential_Optimized(hostHistogram, imageWidth, imageHeight);
     wbTime_stop(Compute, "Otsu's computation");
 
+    // Copy threshold to device
     cudaMemcpy(deviceThresh, hostThresh, sizeof(float), cudaMemcpyHostToDevice);
     wbCheck(cudaDeviceSynchronize());
 
-    // Threshold detection global memory kernal
+    // Threshold detection shared memory kernal
     wbTime_start(Compute, "Threshold Detection computation");
-    	thresh_detection_global<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
+    	thresh_detection_shared<<<GridDim, BlockDim>>>(deviceNmsImageData, deviceWeakEdgeData, deviceEdgeData, deviceThresh, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Threshold Detection computation");
 
@@ -270,7 +268,7 @@ int main(int argc, char *argv[])
     // Start device memory copy timer
     wbTime_start(Copy, "Copying data from the GPU");
 
-    // Only time one copy
+    // Copy data from device back to host
     cudaMemcpy(hostEdgeData, deviceEdgeData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
 
     // Stop memory timer
@@ -279,7 +277,7 @@ int main(int argc, char *argv[])
     // Stop total program timer
     wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
-    // Copy data from device back to host
+    // Copy data from device back to host. Only time the first Memcpy because these are just for debug
     cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
@@ -311,55 +309,57 @@ int main(int argc, char *argv[])
     // Debugging Info //
     ////////////////////
 
-#if (PRINT_DEBUG)
+    // Uncomment #include test_code.h for debug statements
+    #if (PRINT_DEBUG)
 
-    // Print info
-    printf("\n");
-    printf("Width = %u\n", imageWidth);
-    printf("Height = %u\n", imageHeight);
-    printf("InputImage[0] = %f\n", hostInputImageData[0]);
-    printf("Host Histogram[0] = %u\n", hostHistogram[0]);
-    printf("Host Histogram[1] = %u\n", hostHistogram[1]);
-    printf("Host Histogram[20] = %u\n", hostHistogram[20]);
-    printf("Host Histogram[49] = %u\n", hostHistogram[49]);
-    printf("Host Histogram[56] = %u\n", hostHistogram[56]);
-    printf("Host Histogram[255] = %u\n", hostHistogram[255]);
-    printf("Blurred Image[0] = %f\n", hostBlurImageData[0]);
-    printf("Blurred Image[1] = %f\n", hostBlurImageData[1]);
-    printf("Blurred Image[36] = %f\n", hostBlurImageData[36]);
-    printf("Blurred Image[400] = %f\n", hostBlurImageData[400]);
-    printf("Blurred Image[900] = %f\n", hostBlurImageData[900]);
-    printf("Blurred Image[1405] = %f\n", hostBlurImageData[1405]);
-    printf("Blurred Image[85000] = %f\n", hostBlurImageData[85000]);
-
-    for (size_t row = 0; row < filterSize; ++row)
-    {
-        printf("Row=%ld of Gaussian filter = ", row);
-        for (size_t col = 0; col < filterSize; ++col)
-        {
-            printf("%f ", filter[col + filterSize * row]);
-        }
+        // Print info
         printf("\n");
-    }
+        printf("Width = %u\n", imageWidth);
+        printf("Height = %u\n", imageHeight);
+        printf("InputImage[0] = %f\n", hostInputImageData[0]);
+        printf("Host Histogram[0] = %u\n", hostHistogram[0]);
+        printf("Host Histogram[1] = %u\n", hostHistogram[1]);
+        printf("Host Histogram[20] = %u\n", hostHistogram[20]);
+        printf("Host Histogram[49] = %u\n", hostHistogram[49]);
+        printf("Host Histogram[56] = %u\n", hostHistogram[56]);
+        printf("Host Histogram[255] = %u\n", hostHistogram[255]);
+        printf("Blurred Image[0] = %f\n", hostBlurImageData[0]);
+        printf("Blurred Image[1] = %f\n", hostBlurImageData[1]);
+        printf("Blurred Image[36] = %f\n", hostBlurImageData[36]);
+        printf("Blurred Image[400] = %f\n", hostBlurImageData[400]);
+        printf("Blurred Image[900] = %f\n", hostBlurImageData[900]);
+        printf("Blurred Image[1405] = %f\n", hostBlurImageData[1405]);
+        printf("Blurred Image[85000] = %f\n", hostBlurImageData[85000]);
 
-    // printf("Blurred Image[0] = %f\n",hostBlurImageData[0]*255);
-    // printf("Blurred [25] = %f\n", hostBlurImageData[25]*255);
-    // printf("Blurred Image[290] = %f\n",hostBlurImageData[290]*255);
-    // printf("Gradient magnitude at [0] = %f\n",hostGradMagData[0]);
-    // printf("Gradient magnitude at [20] = %f\n",hostGradMagData[20]);
-    // printf("Gradient magnitude at [9000] = %f\n",hostGradMagData[9000]);
-    // printf("Gradient phase at [0] = %f\n",hostGradPhaseData[0]);
-    // printf("Gradient phase at [20] = %f\n",hostGradPhaseData[20]);
-    // printf("Gradient phase at [290] = %f\n",hostGradPhaseData[290]);
-    // printf("NMS at [0] = %f\n",hostNmsImageData[0]);
-    // printf("NMS at [20] = %f\n",hostNmsImageData[20]);
-    // printf("NMS at [130] = %f\n",hostNmsImageData[130]);
-    // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
-    printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
-    // printf("\n");
-#endif
+        for (size_t row = 0; row < filterSize; ++row)
+        {
+            printf("Row=%ld of Gaussian filter = ", row);
+            for (size_t col = 0; col < filterSize; ++col)
+            {
+                printf("%f ", filter[col + filterSize * row]);
+            }
+            printf("\n");
+        }
 
+        // printf("Blurred Image[0] = %f\n",hostBlurImageData[0]*255);
+        // printf("Blurred [25] = %f\n", hostBlurImageData[25]*255);
+        // printf("Blurred Image[290] = %f\n",hostBlurImageData[290]*255);
+        // printf("Gradient magnitude at [0] = %f\n",hostGradMagData[0]);
+        // printf("Gradient magnitude at [20] = %f\n",hostGradMagData[20]);
+        // printf("Gradient magnitude at [9000] = %f\n",hostGradMagData[9000]);
+        // printf("Gradient phase at [0] = %f\n",hostGradPhaseData[0]);
+        // printf("Gradient phase at [20] = %f\n",hostGradPhaseData[20]);
+        // printf("Gradient phase at [290] = %f\n",hostGradPhaseData[290]);
+        // printf("NMS at [0] = %f\n",hostNmsImageData[0]);
+        // printf("NMS at [20] = %f\n",hostNmsImageData[20]);
+        // printf("NMS at [130] = %f\n",hostNmsImageData[130]);
+        // printf("NMS at [131] = %f\n",hostNmsImageData[131]);
+        printf("CUDA Otsu's Threshold = %f\n", hostThresh[0]);
+        // printf("\n");
+    #endif
 
+    //////////////
+    // Clean Up //
     //////////////
 
     // Destory all cuda memory
@@ -385,7 +385,6 @@ int main(int argc, char *argv[])
     free(hostHistogram);
     free(hostThresh);
     free(filter);
-
 
     // Destroy images
     wbImage_delete(outputImage);

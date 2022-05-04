@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
 
     // Image parameters for wbLib
     wbArg_t args;
-    int imageChannels;
     int imageWidth;
     int imageHeight;
     float stDev;
@@ -62,10 +61,6 @@ int main(int argc, char *argv[])
     // Scrape info from input image
     imageWidth = wbImage_getWidth(inputImage);
     imageHeight = wbImage_getHeight(inputImage);
-    imageChannels = wbImage_getChannels(inputImage);
-    
-    // Define new output image
-    //outputImage = wbImage_new(imageWidth, imageHeight, imageChannels);
 
     // Define output image data
     hostInputImageData = wbImage_getData(inputImage);
@@ -96,6 +91,7 @@ int main(int argc, char *argv[])
     float *outData = (float *)calloc(imageHeight * imageWidth, sizeof(float));
     outputImage = wbImage_new(imageWidth, imageHeight, 1, outData);
 
+    // Allocate 256 element histogram on host
     histogram = (unsigned int *)calloc(256, sizeof(unsigned int));
 
     // Stop memory allocation timer
@@ -113,11 +109,6 @@ int main(int argc, char *argv[])
 
 	// Calculate the filter variance
 	stDevSq = stDev * stDev;
-
-	//#ifdef (PRINT_DEBUG)
-		//printf("\n");
-		//printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
-	//#endif
 
     // Fill the gaussian filter
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
@@ -182,7 +173,7 @@ int main(int argc, char *argv[])
     ////////////////////////
 
 
-    // Copy image data for output image (choose 1 - can only log one at a time for now
+    // Copy image data for output image (choose 1 - can only log one at a time)
     //memcpy(outData, GrayImageData, imageHeight*imageWidth*sizeof(float));
     //memcpy(outData, BlurImageData, imageHeight*imageWidth*sizeof(float));
     //memcpy(outData, GradMagData, imageHeight*imageWidth*sizeof(float));
@@ -201,6 +192,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
+// Uncomment #include test_code.h for debug statements
     #if (PRINT_DEBUG)
         // FILE *testThin = fopen("nmsThin.txt", "w");
         // for(int x = 0; x < imageWidth; ++x)

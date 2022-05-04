@@ -1,6 +1,5 @@
 #ifndef __FILTERS_H__
 #define __FILTERS_H__
-//#define FILTERSIZE 3
 
 void Conv2DSerial(float *inImg, float *outImg, double *filter, int width, int height, size_t filterSize);
 void GradientSobelSerial(float *inImg, float *sobelImg, float *gradientImg, int height, int width); 
