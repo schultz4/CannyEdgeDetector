@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     int imageHeight;
     float stDev;
 	float stDevSq;
-    size_t filterSize = 3;
+    size_t filterSize;
     char *inputImageFile;
     wbImage_t inputImage;
     wbImage_t outputImage;
@@ -140,11 +140,6 @@ int main(int argc, char *argv[])
 	// Calculate the filter variance
 	stDevSq = stDev * stDev;
 
-	//#ifdef (PRINT_DEBUG)
-		//printf("\n");
-		//printf("Standard deviation = %f and filter size = %lu\n", stDev, filterSize);
-	//#endif
-
     // Create filter skeleton
     double *filter = (double *)calloc(filterSize * filterSize, sizeof(double));
     double *deviceFilter;
@@ -180,8 +175,10 @@ int main(int argc, char *argv[])
     // Start memory copy timer
     wbTime_start(Copy, "Copying data to the GPU");
 
-    // Copy input image from host to device
+    // Copy Gaussian filter from host to device
     wbCheck(cudaMemcpy(deviceFilter, filter, filterSize * filterSize * sizeof(double), cudaMemcpyHostToDevice));
+
+    // Copy input image from host to device
     wbCheck(cudaMemcpy(deviceInputImageData, hostInputImageData, imageChannels * imageWidth * imageHeight * sizeof(float), cudaMemcpyHostToDevice));
     wbTime_stop(Copy, "Copying data to the GPU");
 
@@ -229,12 +226,13 @@ int main(int argc, char *argv[])
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Non-maximum Suppression computation");
 
+    // Calculate histogram of nms image
     wbTime_start(Compute, "Histogram computation");
         NaiveHistogram<<<histGridDim, histBlockDim>>>(deviceNmsImageData, deviceHistogram, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
     wbTime_stop(Compute, "Histogram computation");
 
-    // Stop computation timer
+    // Find optimal threshold using Otsu's Method
     wbTime_start(Compute, "Otsu's computation");
         NaiveOtsu<<<1, 256>>>(deviceHistogram, deviceThresh, imageWidth, imageHeight);
     wbCheck(cudaDeviceSynchronize());
@@ -273,6 +271,7 @@ int main(int argc, char *argv[])
     // Stop total program timer
     wbTime_stop(GPU, "Doing Computation (memory + compute)");
 
+    // Copy data from device back to host. Only time the first Memcpy because these are just for debug
     cudaMemcpy(hostGrayImageData, deviceGrayImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostBlurImageData, deviceBlurImageData, imageWidth * imageHeight * sizeof(float), cudaMemcpyDeviceToHost);
     cudaMemcpy(hostGradMagData, deviceGradMagData, imageHeight * imageWidth * sizeof(float), cudaMemcpyDeviceToHost);
@@ -308,7 +307,7 @@ int main(int argc, char *argv[])
     ////////////////////
 
 
-    // Print info
+    // Uncomment #include test_code.h for debug statements
     #if (PRINT_DEBUG)
         printf("\n");
         printf("Width = %u\n", imageWidth);
