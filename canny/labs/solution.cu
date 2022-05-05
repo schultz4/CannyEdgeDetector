@@ -21,17 +21,14 @@
         }                                                                  \
     } while (0)
 
-
 int main(int argc, char *argv[])
 {
+    // Initialize cuda
+    cudaFree(0);
 
     //////////////////////////////
     // Parameter Initialization //
     //////////////////////////////
-
-
-    // Initialize CUDA
-    cudaFree(0);
 
     // Image parameters for wbLib
     wbArg_t args;

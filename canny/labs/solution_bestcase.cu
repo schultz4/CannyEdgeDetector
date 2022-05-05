@@ -23,13 +23,12 @@
 
 int main(int argc, char *argv[])
 {
-  cudaFree(0);
+    // Initialize cuda
+    cudaFree(0);
 
     //////////////////////////////
     // Parameter Initialization //
     //////////////////////////////
-
-    cudaFree(0);
 
     // Image parameters for wbLib
     wbArg_t args;
