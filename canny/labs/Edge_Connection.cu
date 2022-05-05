@@ -1,5 +1,15 @@
 #include "Edge_Connection.h"
 
+////////////////////////////////////////////////////////////////////////////
+// threshold_detection_serial inputs: image: non-maxium suppression image //
+// thresh_high : optimal threshold from Otsu Method                       //
+// width and heigth: width and height of image                            //
+// returns : edges_img : location of strong edge pixels                   //
+// and weak_img : location of weak edge pixels                            //
+// Finds location of weak and strong edge pixels                          //
+////////////////////////////////////////////////////////////////////////////
+
+
 void threshold_detection_serial(float *image, float *weak_img, float *edges_img,
                                 double thresh_high, int width, int height)
 {
@@ -36,6 +46,16 @@ void threshold_detection_serial(float *image, float *weak_img, float *edges_img,
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+// edge_connection_serial inputs: weak_img: weak edge pixels location          //
+// edge_img: strong edge images pixels locations                               //
+// width and heights: Image width and height                                   //
+// returns: edge_img: location of strong edge pixels where weak pixels         //
+// have been connect to strong pixels                                          //
+// Connects weak edges pixels to strong edges pixels                           //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 void edge_connection_serial(float *weak_img, float *edge_img, int width, int height)
 {
@@ -85,6 +105,16 @@ void edge_connection_serial(float *weak_img, float *edge_img, int width, int hei
     }
 }
 
+
+////////////////////////////////////////////////////////////////////////////
+// threshold_detection_global inputs: image: non-maxium suppression image //
+// thresh_high : optimal threshold from Otsu Method                       //
+// width and heigth: width and height of image                            //
+// returns : edges_img : location of strong edge pixels                   //
+// and weak_img : location of weak edge pixels                            //
+// Finds location of weak and strong edge pixels                          //
+////////////////////////////////////////////////////////////////////////////
+
 __global__ void thresh_detection_global(float *image, float *weak_img, float *edge_img, float *thresh_high,
                                         int width, int height)
 {
@@ -122,6 +152,15 @@ __global__ void thresh_detection_global(float *image, float *weak_img, float *ed
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+// edge_connection_global inputs: weak_img: weak edge pixels location          //
+// edge_img: strong edge images pixels locations                               //
+// width and heights: Image width and height                                   //
+// returns: edge_img: location of strong edge pixels where weak pixels         //
+// have been connect to strong pixels                                          //
+// Connects weak edges pixels to strong edges pixels                           //
+/////////////////////////////////////////////////////////////////////////////////
 
 __global__ void edge_connection_global(float *weak_img, float *edge_img, int width, int height)
 {
@@ -177,6 +216,15 @@ __global__ void edge_connection_global(float *weak_img, float *edge_img, int wid
     }
 }
 
+////////////////////////////////////////////////////////////////////////////
+// threshold_detection_shared inputs: image: non-maxium suppression image //
+// thresh_high : optimal threshold from Otsu Method                       //
+// width and heigth: width and height of image                            //
+// returns : edges_img : location of strong edge pixels                   //
+// and weak_img : location of weak edge pixels                            //
+// Finds location of weak and strong edge pixels                          //
+////////////////////////////////////////////////////////////////////////////
+
 __global__ void thresh_detection_shared(float *image, float *weak_img, float *edge_img, float *thresh_high,
                                         int width, int height)
 {
@@ -214,6 +262,15 @@ __global__ void thresh_detection_shared(float *image, float *weak_img, float *ed
         }
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+// edge_connection_shared inputs: weak_img: weak edge pixels location          //
+// edge_img: strong edge images pixels locations                               //
+// width and heights: Image width and height                                   //
+// returns: edge_img: location of strong edge pixels where weak pixels         //
+// have been connect to strong pixels                                          //
+// Connects weak edges pixels to strong edges pixels                           //
+/////////////////////////////////////////////////////////////////////////////////
 
 __global__ void edge_connection_shared(float *weak_img, float *edge_img, int width, int height)
 {
