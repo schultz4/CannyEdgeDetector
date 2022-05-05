@@ -23,6 +23,7 @@
 
 int main(int argc, char *argv[])
 {
+    // Initialize cuda
     cudaFree(0);
 
     //////////////////////////////
