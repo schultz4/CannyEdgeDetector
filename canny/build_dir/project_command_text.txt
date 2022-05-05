@@ -1,3 +1,0 @@
-./CannyImage_Serial -i CannyImage/Dataset/0/input.ppm -t image > output.txt -o CannyImage/Dataset/0/output.ppm
-./CannyImage_Solution -i CannyImage/Dataset/0/input.ppm -t image > output.txt -o CannyImage/Dataset/0/output_native.ppm
-
