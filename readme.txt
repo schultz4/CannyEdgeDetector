@@ -47,7 +47,7 @@ found at
 ```
 canny/build_dir/CannyImage/Dataset/<img_num>/input.ppm
 ```
-There are 15 images stored for the experiments. Simply replace ```<img_num>```
+There are 16 images stored for the experiments. Simply replace ```<img_num>```
 above with the digit coresponding to the image you wish to view.
 
 ## Output Data
@@ -65,3 +65,10 @@ with the following
 | canny/build_dir/CannyImage_Solution_Opt  | opt           |
 | canny/build_dir/CannyImage_Solution_Best | best          |
 
+The following files are output from the ```run_canny.slurm``` file and referencing 
+the prefixes and images above
+```
+canny/build_dir/CannyImage_output/<prefix>_0.83_output<img_num>.txt
+canny/build_dir/CannyImage_output/<prefix>_0.83_outputImg<img_num>.ppm
+canny/build_dir/CannyImage_output/timing-report-0.83-<img_num>.txt
+```
