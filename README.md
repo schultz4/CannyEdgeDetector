@@ -56,7 +56,9 @@ Outputs of the ```run_canny.slurm``` file will be written to
 canny/build_dir/CannyImage_output/
 ```
 Each of the output reports and images for the 
-|canny/build_dir/CannyImage_Serial        | serial
-|canny/build_dir/CannyImage_Solution      | gpu
-|canny/build_dir/CannyImage_Solution_Opt  | opt
-|canny/build_dir/CannyImage_Solution_Best | best
+| Binary being run                         | output prefix |
+|------------------------------------------|---------------|
+| canny/build_dir/CannyImage_Serial        | serial        |
+| canny/build_dir/CannyImage_Solution      | gpu           |
+| canny/build_dir/CannyImage_Solution_Opt  | opt           |
+| canny/build_dir/CannyImage_Solution_Best | best          |
