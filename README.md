@@ -37,9 +37,8 @@ following from the top-level directory
 cd canny/build_dir
 srun run_canny.slurm
 ```
-If you are running outside this directory, you will need to modify the 
-```hw_path``` variable on line 36 of ```run_canny.slurm``` to reference this 
-directory
+If you are running outside this directory, you will need to modify the ```hw_path``` variable on 
+line 36 of ```run_canny.slurm``` to reference this directory
 
 # Project organization
 ## Image dataset for this project
@@ -51,3 +50,13 @@ canny/build_dir/CannyImage/Dataset/<img_num>/input.ppm
 There are 15 images stored for the experiments. Simply replace ```<img_num>```
 above with the digit coresponding to the image you wish to view.
 
+## Output Data
+Outputs of the ```run_canny.slurm``` file will be written to 
+```
+canny/build_dir/CannyImage_output/
+```
+Each of the output reports and images for the 
+|canny/build_dir/CannyImage_Serial        | serial
+|canny/build_dir/CannyImage_Solution      | gpu
+|canny/build_dir/CannyImage_Solution_Opt  | opt
+|canny/build_dir/CannyImage_Solution_Best | best
